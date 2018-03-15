@@ -2,9 +2,11 @@ import os
 import json
 import pluggy
 from attr import asdict
+from hippiehug import Chain
+from claimchain import State
 from claimchain.crypto.params import LocalParams, Keypair
 from claimchain.utils import pet2ascii
-
+from .filestore import FileStore
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
 
@@ -21,47 +23,46 @@ class CCAccount:
     def __init__(self, accountdir):
         self.accountdir = accountdir
         self.store = FileStore(os.path.join(accountdir, 'filestore'))
-        self.params = self.init_crypto_identity()
+        self.init_crypto_identity()
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
         if not os.path.exists(identity_file):
-            params = LocalParams.generate()
+            self.params = LocalParams.generate()
+            state = State()
+            state.identity_info = "Hi, I'm " + pet2ascii(self.params.vrf.pk)
+            assert self.head is None
+            self.commit_state_to_chain(state)
+            assert self.head
             with open(identity_file, 'w') as fp:
-                json.dump(export_params(params), fp)
+                json.dump(export_params(self.params), fp)
         else:
             with open(identity_file, 'r') as fp:
                 params_raw = json.load(fp)
-                params = LocalParams.from_dict(params_raw)
-        return params
+                self.params = LocalParams.from_dict(params_raw)
 
-        # state = State()
-        # state.identity_info = "Hi, I'm " + name
+    def head():
+        def fget(self):
+            try:
+                with open(os.path.join(self.accountdir, 'head'), 'rb') as fp:
+                    return fp.read()
+            except IOError:
+                return None
 
-        # Generate cryptographic keys
-        # params = LocalParams.generate()
-        # return commit_state_to_chain(store, params, state, head=None), params
+        def fset(self, val):
+            with open(os.path.join(self.accountdir, 'head'), 'wb') as fp:
+                fp.write(val)
+        return property(fget, fset)
+    head = head()
 
-        # create accountdir
+    def commit_state_to_chain(self, state):
+        chain = Chain(self.store, root_hash=self.head)
+        with self.params.as_default():
+            self.head = state.commit(chain)
 
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         pass
-
-
-class FileStore():
-
-    def __init__(self, dir):
-        pass
-
-    def __setitem__(self, key, value):
-        print("store-set {}={}".format(base64.b64encode(key), value))
-        super(MyStore, self).__setitem__(key, value)
-
-    def __getitem__(self, key):
-        val = super(MyStore, self).__getitem__(key)
-        print("store-get {} -> {}".format(base64.b64encode(key), val))
-        return val
 
 
 def export_params(params):
