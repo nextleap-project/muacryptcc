@@ -1,8 +1,17 @@
 import os
-import base64
+import urllib
 import msgpack
 from hippiehug.Nodes import h, Leaf, Branch
+from claimchain.utils.wrappers import Blob
 from hippiehug.Chain import Block
+
+
+def key2basename(key):
+    return urllib.quote(key, safe="")
+
+
+def basename2key(basename):
+    return urllib.unquote(basename)
 
 
 def default(obj):
@@ -15,6 +24,7 @@ def default(obj):
         return msgpack.ExtType(43,  datab)
     if isinstance(obj, Block):
         datab = msgpack.packb((obj.items, obj.index, obj.fingers, obj.aux))
+        #import pdb ; pdb.set_trace()
         return msgpack.ExtType(44,  datab)
     raise TypeError("Unknown Type: %r" % (obj,))
 
@@ -30,7 +40,6 @@ def ext_hook(code, data):
     if code == 44:
         items, index, fingers, aux = msgpack.unpackb(data)
         return Block(items, index, fingers, aux)
-
     return ExtType(code, data)
 
 
@@ -42,20 +51,21 @@ class FileStore:
             os.makedirs(dir)
 
     def __getitem__(self, key):
-        if key in self.cache:
-            return self.cache[key]
-        if len(self.cache) > 10000:
-            self.cache = {}
-
+        #if key in self.cache:
+        #    return self.cache[key]
+        #if len(self.cache) > 10000:
+        #    self.cache = {}
         bdata = self.file_get(key)
         branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
+        if isinstance(branch, bytes):
+            return Blob(branch)
         # assert key == branch.identity()
-        self.cache[key] = branch
+        #self.cache[key] = branch
         return branch
 
     def __setitem__(self, key, value):
-        if key in self.cache:
-            return
+        #if key in self.cache:
+        #    return
         bdata = msgpack.packb(value, default=default)
         # assert key == value.identity()
         self.file_set(key, bdata)
@@ -63,27 +73,26 @@ class FileStore:
     def file_set(self, key, value):
         if not isinstance(value, bytes):
             raise ValueError("Value must be of type bytes")
-        bn = base64.b64encode(key)
+        bn = key2basename(key)
         with open(os.path.join(self._dir, bn), "wb") as f:
             f.write(value)
-            print("store-set {}={!r}".format(bn, value))
+            print("store-set {!r}={!r}".format(key, value))
 
     def file_get(self, key):
-        bn = base64.b64encode(key)
+        bn = key2basename(key)
         try:
             with open(os.path.join(self._dir, bn), "rb") as f:
                 val = f.read()
-                print("store-get {} -> {!r}".format(bn, val))
+                print("store-get {!r} -> {!r}".format(key, val))
             return val
         except IOError:
             raise KeyError(key)
 
     def items(self):
         try:
-            raw_keys = os.listdir(self._dir)
+            encoded_keys = os.listdir(self._dir)
         except OSError:
-            raw_keys = []
-        for raw_key in raw_keys:
-            key = base64.b64decode(raw_key)
-            val = self[key]
-            yield key, val
+            encoded_keys = []
+        for raw_key in encoded_keys:
+            key = basename2key(raw_key)
+            yield key, self[key]

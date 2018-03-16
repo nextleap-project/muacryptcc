@@ -1,5 +1,11 @@
 import pytest
-from muacryptcc.filestore import FileStore
+from muacryptcc.filestore import FileStore, key2basename, basename2key
+
+
+def test_basename_encoding():
+    key = b'\0\17/13'
+    assert basename2key(key2basename(key)) == key
+
 
 def test_file_store(tmpdir):
     store = FileStore(str(tmpdir))

@@ -3,7 +3,7 @@ import json
 import pluggy
 from attr import asdict
 from hippiehug import Chain
-from claimchain import State
+from claimchain import State, View
 from claimchain.crypto.params import LocalParams, Keypair
 from claimchain.utils import pet2ascii
 from .filestore import FileStore
@@ -19,7 +19,6 @@ def instantiate_account(plugin_manager, basedir):
 
 
 class CCAccount:
-
     def __init__(self, accountdir):
         self.accountdir = accountdir
         self.store = FileStore(os.path.join(accountdir, 'filestore'))
@@ -41,6 +40,12 @@ class CCAccount:
                 params_raw = json.load(fp)
                 self.params = LocalParams.from_dict(params_raw)
 
+    def get_public_key(self):
+        return self.params.vrf.pk
+        # chain = self._get_current_chain()
+        # with self.params.as_default():
+        #     return View(chain).params.dh.pk
+
     def head():
         def fget(self):
             try:
@@ -55,11 +60,40 @@ class CCAccount:
         return property(fget, fset)
     head = head()
 
+    def _get_current_chain(self):
+        return Chain(self.store, root_hash=self.head)
+
+    def get_current_state(self):
+        return State()
+
     def commit_state_to_chain(self, state):
-        chain = Chain(self.store, root_hash=self.head)
+        chain = self._get_current_chain()
         with self.params.as_default():
             self.head = state.commit(chain)
 
+    def read_claim(self, claimkey):
+        chain = self._get_current_chain()
+        with self.params.as_default():
+            return View(chain)[claimkey]
+
+    def has_readable_claim(self, claimkey):
+        try:
+            self.read_claim(claimkey)
+        except (KeyError, ValueError):
+            return False
+        return True
+
+    def add_claim(self, state, claim, access_pk=None):
+        key, value = claim
+        state[key] = value
+        if access_pk is not None:
+            with self.params.as_default():
+                state.grant_access(access_pk, [key])
+
+
+    #
+    # muacrypt plugin hook implementations
+    #
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         pass
