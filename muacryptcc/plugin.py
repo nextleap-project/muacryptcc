@@ -15,7 +15,7 @@ hookimpl = pluggy.HookimplMarker("muacrypt")
 def instantiate_account(plugin_manager, basedir):
     cc_dir = os.path.join(basedir, "muacryptcc")
     cc_manager = CCAccount(cc_dir)
-    plugin_manager.register_plugin(cc_manager)
+    plugin_manager.register(cc_manager)
 
 
 class CCAccount:
