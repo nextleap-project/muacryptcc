@@ -3,7 +3,7 @@ from __future__ import print_function
 import os
 import pytest
 from muacryptcc.plugin import CCAccount, export_params
-from muacryptcc.plugin import FileStore
+from muacryptcc.filestore import FileStore
 
 
 @pytest.fixture(params=["dict", "filestore"])
@@ -36,18 +36,18 @@ def test_add_claim_with_access_control(make_account):
     alice_pk = cc_alice.get_public_key()
     bob_pk = cc_bob.get_public_key()
 
-    assert not cc_alice.has_readable_claim("bob_hair")
+    assert not cc_alice.has_readable_claim(b"bob_hair")
 
     state = cc_alice.get_current_state()
     cc_alice.add_claim(
         state,
-        claim=("bob_hair", "black"),
+        claim=(b"bob_hair", b"black"),
         access_pk=alice_pk
     )
     cc_alice.commit_state_to_chain(state)
-    assert cc_alice.has_readable_claim("bob_hair")
+    assert cc_alice.has_readable_claim(b"bob_hair")
 
-    cc_alice.add_claim(state, claim=("bob_feet", "4"), access_pk=bob_pk)
+    cc_alice.add_claim(state, claim=(b"bob_feet", b"4"), access_pk=bob_pk)
     cc_alice.commit_state_to_chain(state)
-    assert cc_alice.has_readable_claim_for(cc_bob, "bob_feet")
-    assert not cc_alice.has_readable_claim_for(cc_bob, "bob_hair")
+    assert cc_alice.has_readable_claim_for(cc_bob, b"bob_feet")
+    assert not cc_alice.has_readable_claim_for(cc_bob, b"bob_hair")

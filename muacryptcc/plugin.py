@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import os
 import json
@@ -78,6 +78,8 @@ class CCAccount:
         return self.read_claim_as(self, claimkey)
 
     def read_claim_as(self, other, claimkey):
+        assert isinstance(claimkey, bytes)
+        print("read-claim-as", other, repr(claimkey))
         chain = self._get_current_chain()
         with other.params.as_default():
             return View(chain)[claimkey]
@@ -86,6 +88,7 @@ class CCAccount:
         return self.has_readable_claim_for(self, claimkey)
 
     def has_readable_claim_for(self, other, claimkey):
+        assert isinstance(claimkey, bytes)
         try:
             self.read_claim_as(other, claimkey)
         except (KeyError, ValueError):
@@ -93,7 +96,10 @@ class CCAccount:
         return True
 
     def add_claim(self, state, claim, access_pk=None):
+        # print("add-claim", repr(claim), repr(access_pk))
         key, value = claim
+        assert isinstance(key, bytes)
+        assert isinstance(value, bytes)
         state[key] = value
         if access_pk is not None:
             with self.params.as_default():

@@ -10,11 +10,11 @@ def test_basename_encoding():
 def test_file_store(tmpdir):
     store = FileStore(str(tmpdir))
     with pytest.raises(KeyError):
-        store.file_get('key')
+        store.file_get(b'key')
     assert not list(store.items())
-    store.file_set('key', b'value')
-    assert b'value' == store.file_get('key')
+    store.file_set(b'key', b'value')
+    assert b'value' == store.file_get(b'key')
     with pytest.raises(ValueError):
-        store.file_set('key', 32)
+        store.file_set(b'key', 32)
     store2 = FileStore(str(tmpdir))
-    assert b'value' == store2.file_get('key')
+    assert b'value' == store2.file_get(b'key')

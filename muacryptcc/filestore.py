@@ -1,5 +1,6 @@
 import os
-import urllib
+
+from base58 import b58encode, b58decode
 import msgpack
 from hippiehug.Nodes import Leaf, Branch
 from claimchain.utils.wrappers import Blob
@@ -7,11 +8,11 @@ from hippiehug.Chain import Block
 
 
 def key2basename(key):
-    return urllib.quote(key, safe="")
+    return b58encode(key)
 
 
 def basename2key(basename):
-    return urllib.unquote(basename)
+    return b58decode(basename)
 
 
 def default(obj):

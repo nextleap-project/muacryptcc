@@ -25,7 +25,7 @@ env:
   matrix:
     - TESTENV=lint
     - TESTENV=py27
-    - TESTENV=py35
+#    - TESTENV=py35
 
 script:
   - gpg2 --version
