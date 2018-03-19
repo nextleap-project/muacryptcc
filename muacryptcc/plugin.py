@@ -19,9 +19,14 @@ def instantiate_account(plugin_manager, basedir):
 
 
 class CCAccount:
-    def __init__(self, accountdir):
+    def __init__(self, accountdir, store=None):
         self.accountdir = accountdir
-        self.store = FileStore(os.path.join(accountdir, 'filestore'))
+        if not os.path.exists(accountdir):
+            os.makedirs(accountdir)
+        if store is None:
+            self.store = FileStore(os.path.join(accountdir, 'filestore'))
+        else:
+            self.store = store
         self.init_crypto_identity()
 
     def init_crypto_identity(self):
@@ -41,7 +46,7 @@ class CCAccount:
                 self.params = LocalParams.from_dict(params_raw)
 
     def get_public_key(self):
-        return self.params.vrf.pk
+        return self.params.dh.pk
         # chain = self._get_current_chain()
         # with self.params.as_default():
         #     return View(chain).params.dh.pk
@@ -72,13 +77,19 @@ class CCAccount:
             self.head = state.commit(chain)
 
     def read_claim(self, claimkey):
+        return self.read_claim_as(self, claimkey)
+
+    def read_claim_as(self, other, claimkey):
         chain = self._get_current_chain()
-        with self.params.as_default():
+        with other.params.as_default():
             return View(chain)[claimkey]
 
     def has_readable_claim(self, claimkey):
+        return self.has_readable_claim_for(self, claimkey)
+
+    def has_readable_claim_for(self, other, claimkey):
         try:
-            self.read_claim(claimkey)
+            self.read_claim_as(other, claimkey)
         except (KeyError, ValueError):
             return False
         return True
