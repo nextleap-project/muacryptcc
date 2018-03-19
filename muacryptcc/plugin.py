@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import json
 import pluggy
@@ -23,10 +25,7 @@ class CCAccount:
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
-        if store is None:
-            self.store = FileStore(os.path.join(accountdir, 'filestore'))
-        else:
-            self.store = store
+        self.store = store
         self.init_crypto_identity()
 
     def init_crypto_identity(self):
