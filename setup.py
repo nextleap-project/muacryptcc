@@ -33,7 +33,7 @@ def main():
                 "muacryptcc=muacryptcc.plugin"
             ]
         },
-        install_requires=["base58", "muacrypt>=0.8.0.dev13"],
+        install_requires=["base58", "muacrypt"],
         # install_requires=["claimchain", "muacrypt"],
         zip_safe=False,
     )
