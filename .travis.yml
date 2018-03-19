@@ -1,0 +1,44 @@
+sudo: False
+language: python
+dist: trusty
+python:
+    - '3.5'
+cache:
+  directories:
+    - $HOME/bin
+    - $HOME/lib
+install:
+  - PATH="$HOME/bin:$PATH"
+  - export LD_LIBRARY_PATH="$HOME/lib:${LD_LIBRARY_PATH}"
+  - pip install -U tox
+  - gpg2 --version
+#  - util/custom-gpg.sh
+
+before_install:
+    - sudo apt-get install gnupg2
+    - sudo apt-get install rng-tools
+    - sudo rngd -r /dev/urandom
+
+env:
+  global:
+    - GPG_VERSION='2.1.18'
+  matrix:
+    - TESTENV=lint
+    - TESTENV=py27
+    - TESTENV=py35
+
+script:
+  - gpg2 --version
+  - echo $PATH
+  - which gpg2
+  - tox -e $TESTENV --recreate -- test_muacrypt/
+
+#notifications:
+#  irc:
+#    channels:
+#      - "chat.freenode.net#autocrypt"
+#    on_success: change
+#    on_failure: change
+#    skip_join: true
+#  email:
+#    - pytest-commit@python.org
