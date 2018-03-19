@@ -18,4 +18,3 @@ def test_file_store(tmpdir):
         store.file_set('key', 32)
     store2 = FileStore(str(tmpdir))
     assert b'value' == store2.file_get('key')
-

@@ -8,7 +8,6 @@ from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams, Keypair
 from claimchain.utils import pet2ascii
-from .filestore import FileStore
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
 
@@ -100,7 +99,6 @@ class CCAccount:
             with self.params.as_default():
                 state.grant_access(access_pk, [key])
 
-
     #
     # muacrypt plugin hook implementations
     #
@@ -116,4 +114,3 @@ def export_params(params):
             result[name + '_pk'] = pet2ascii(attr.pk)
             result[name + '_sk'] = pet2ascii(attr.sk)
     return result
-

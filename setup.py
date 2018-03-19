@@ -33,7 +33,7 @@ def main():
                 "muacryptcc=muacryptcc.plugin"
             ]
         },
-        install_requires=["claimchain", "muacrypt"],
+        # install_requires=["claimchain", "muacrypt"],
         zip_safe=False,
     )
 

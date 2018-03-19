@@ -1,7 +1,7 @@
 import os
 import urllib
 import msgpack
-from hippiehug.Nodes import h, Leaf, Branch
+from hippiehug.Nodes import Leaf, Branch
 from claimchain.utils.wrappers import Blob
 from hippiehug.Chain import Block
 
@@ -21,11 +21,10 @@ def default(obj):
         return msgpack.ExtType(42, datab)
     if isinstance(obj, Branch):
         datab = msgpack.packb((obj.pivot, obj.left_branch, obj.right_branch))
-        return msgpack.ExtType(43,  datab)
+        return msgpack.ExtType(43, datab)
     if isinstance(obj, Block):
         datab = msgpack.packb((obj.items, obj.index, obj.fingers, obj.aux))
-        #import pdb ; pdb.set_trace()
-        return msgpack.ExtType(44,  datab)
+        return msgpack.ExtType(44, datab)
     raise TypeError("Unknown Type: %r" % (obj,))
 
 
@@ -40,32 +39,24 @@ def ext_hook(code, data):
     if code == 44:
         items, index, fingers, aux = msgpack.unpackb(data)
         return Block(items, index, fingers, aux)
-    return ExtType(code, data)
+    return msgpack.ExtType(code, data)
 
 
 class FileStore:
     def __init__(self, dir):
-        self.cache = {}
         self._dir = dir
         if not os.path.exists(dir):
             os.makedirs(dir)
 
     def __getitem__(self, key):
-        #if key in self.cache:
-        #    return self.cache[key]
-        #if len(self.cache) > 10000:
-        #    self.cache = {}
         bdata = self.file_get(key)
         branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
         if isinstance(branch, bytes):
             return Blob(branch)
         # assert key == branch.identity()
-        #self.cache[key] = branch
         return branch
 
     def __setitem__(self, key, value):
-        #if key in self.cache:
-        #    return
         bdata = msgpack.packb(value, default=default)
         # assert key == value.identity()
         self.file_set(key, bdata)

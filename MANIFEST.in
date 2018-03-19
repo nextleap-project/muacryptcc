@@ -1,0 +1,7 @@
+prune doc
+prune util
+include *.txt
+include LICENSE
+include *.rst
+include tox.ini
+recursive-include tests *.py
