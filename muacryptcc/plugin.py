@@ -3,10 +3,9 @@ from __future__ import print_function, unicode_literals
 import os
 import json
 import pluggy
-from attr import asdict
 from hippiehug import Chain
 from claimchain import State, View
-from claimchain.crypto.params import LocalParams, Keypair
+from claimchain.crypto.params import LocalParams
 from claimchain.utils import pet2ascii
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
@@ -37,7 +36,7 @@ class CCAccount:
             self.commit_state_to_chain(state)
             assert self.head
             with open(identity_file, 'w') as fp:
-                json.dump(export_params(self.params), fp)
+                json.dump(self.params.private_export(), fp)
         else:
             with open(identity_file, 'r') as fp:
                 params_raw = json.load(fp)
@@ -111,12 +110,3 @@ class CCAccount:
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         pass
-
-
-def export_params(params):
-    result = {}
-    for name, attr in asdict(params, recurse=False).items():
-        if isinstance(attr, Keypair):
-            result[name + '_pk'] = pet2ascii(attr.pk)
-            result[name + '_sk'] = pet2ascii(attr.sk)
-    return result

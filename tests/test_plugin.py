@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import os
 import pytest
-from muacryptcc.plugin import CCAccount, export_params
+from muacryptcc.plugin import CCAccount
 from muacryptcc.filestore import FileStore
 
 
@@ -25,7 +25,7 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
     cc1 = make_account("alice")
     cc2 = make_account("alice", store=cc1.store)
 
-    assert export_params(cc1.params) == export_params(cc2.params)
+    assert cc1.params.private_export() == cc2.params.private_export()
     assert cc1.params.vrf.sk
     assert cc1.params.vrf.sk == cc1.params.vrf.sk
 
