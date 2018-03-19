@@ -31,7 +31,7 @@ script:
   - gpg2 --version
   - echo $PATH
   - which gpg2
-  - tox -e $TESTENV --recreate -- test_muacrypt/
+  - tox -e $TESTENV --recreate -- tests/
 
 #notifications:
 #  irc:
