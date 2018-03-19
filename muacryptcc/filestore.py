@@ -68,14 +68,14 @@ class FileStore:
         bn = key2basename(key)
         with open(os.path.join(self._dir, bn), "wb") as f:
             f.write(value)
-            print("store-set {!r}={!r}".format(key, value))
+            print("store-set {!r}={!r}".format(bn, value))
 
     def file_get(self, key):
         bn = key2basename(key)
         try:
             with open(os.path.join(self._dir, bn), "rb") as f:
                 val = f.read()
-                print("store-get {!r} -> {!r}".format(key, val))
+                print("store-get {!r} -> {!r}".format(bn, val))
             return val
         except IOError:
             raise KeyError(key)
