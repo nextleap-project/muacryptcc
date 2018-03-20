@@ -35,7 +35,7 @@ class CCAccount(object):
 
     @hookimpl
     def process_outgoing_before_encryption(self, account_key, msg):
-        msg["GossipClaims"]=account_key
+        msg["GossipClaims"]=pet2ascii(self.head)
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
