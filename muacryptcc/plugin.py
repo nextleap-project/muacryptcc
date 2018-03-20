@@ -18,7 +18,7 @@ def instantiate_account(plugin_manager, basedir):
     plugin_manager.register(cc_manager)
 
 
-class CCAccount:
+class CCAccount(object):
     def __init__(self, accountdir, store=None):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):

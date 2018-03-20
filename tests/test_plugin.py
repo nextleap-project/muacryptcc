@@ -28,6 +28,8 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
     assert cc1.params.private_export() == cc2.params.private_export()
     assert cc1.params.vrf.sk
     assert cc1.params.vrf.sk == cc1.params.vrf.sk
+    assert cc1.head
+    assert cc1.head == cc2.head
 
 
 def test_add_claim_with_access_control(make_account):
