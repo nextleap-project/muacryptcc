@@ -31,7 +31,11 @@ class CCAccount:
     #
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
-        pass
+        assert dec_msg["GossipClaims"]
+
+    @hookimpl
+    def process_outgoing_before_encryption(self, account_key, msg):
+        msg["GossipClaims"]=account_key
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
