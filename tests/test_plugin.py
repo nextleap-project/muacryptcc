@@ -38,16 +38,14 @@ def test_add_claim_with_access_control(make_account):
 
     assert not cc_alice.has_readable_claim(b"bob_hair")
 
-    state = cc_alice.get_current_state()
     cc_alice.add_claim(
-        state,
         claim=(b"bob_hair", b"black"),
         access_pk=alice_pk
     )
-    cc_alice.commit_state_to_chain(state)
+    cc_alice.commit_to_chain()
     assert cc_alice.has_readable_claim(b"bob_hair")
 
-    cc_alice.add_claim(state, claim=(b"bob_feet", b"4"), access_pk=bob_pk)
-    cc_alice.commit_state_to_chain(state)
+    cc_alice.add_claim(claim=(b"bob_feet", b"4"), access_pk=bob_pk)
+    cc_alice.commit_to_chain()
     assert cc_alice.has_readable_claim_for(cc_bob, b"bob_feet")
     assert not cc_alice.has_readable_claim_for(cc_bob, b"bob_hair")

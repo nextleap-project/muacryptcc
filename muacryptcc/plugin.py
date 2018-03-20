@@ -26,14 +26,21 @@ class CCAccount:
         self.store = store
         self.init_crypto_identity()
 
+    #
+    # muacrypt plugin hook implementations
+    #
+    @hookimpl
+    def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
+        pass
+
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
         if not os.path.exists(identity_file):
             self.params = LocalParams.generate()
-            state = State()
-            state.identity_info = "Hi, I'm " + pet2ascii(self.params.vrf.pk)
+            self.state = State()
+            self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.vrf.pk)
             assert self.head is None
-            self.commit_state_to_chain(state)
+            self.commit_to_chain()
             assert self.head
             with open(identity_file, 'w') as fp:
                 json.dump(self.params.private_export(), fp)
@@ -41,6 +48,8 @@ class CCAccount:
             with open(identity_file, 'r') as fp:
                 params_raw = json.load(fp)
                 self.params = LocalParams.from_dict(params_raw)
+                # TODO: load state from last block
+                self.state = State()
 
     def get_public_key(self):
         return self.params.dh.pk
@@ -62,16 +71,10 @@ class CCAccount:
         return property(fget, fset)
     head = head()
 
-    def _get_current_chain(self):
-        return Chain(self.store, root_hash=self.head)
-
-    def get_current_state(self):
-        return State()
-
-    def commit_state_to_chain(self, state):
+    def commit_to_chain(self):
         chain = self._get_current_chain()
         with self.params.as_default():
-            self.head = state.commit(chain)
+            self.head = self.state.commit(chain)
 
     def read_claim(self, claimkey):
         return self.read_claim_as(self, claimkey)
@@ -94,19 +97,15 @@ class CCAccount:
             return False
         return True
 
-    def add_claim(self, state, claim, access_pk=None):
+    def add_claim(self, claim, access_pk=None):
         # print("add-claim", repr(claim), repr(access_pk))
         key, value = claim
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
-        state[key] = value
+        self.state[key] = value
         if access_pk is not None:
             with self.params.as_default():
-                state.grant_access(access_pk, [key])
+                self.state.grant_access(access_pk, [key])
 
-    #
-    # muacrypt plugin hook implementations
-    #
-    @hookimpl
-    def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
-        pass
+    def _get_current_chain(self):
+        return Chain(self.store, root_hash=self.head)
