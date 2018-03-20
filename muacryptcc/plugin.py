@@ -40,6 +40,10 @@ class CCAccount(object):
         assert peers_chain
         peers_pk = View(peers_chain).params.dh.pk
         assert peers_pk
+        key = dec_msg["From"].encode()
+        value = root_hash.encode()
+        self.add_claim(claim=(key, value), access_pk=peers_pk)
+        self.commit_to_chain()
 
     @hookimpl
     def process_outgoing_before_encryption(self, account_key, msg):
@@ -117,8 +121,9 @@ class CCAccount(object):
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
-        if access_pk is not None:
-            with self.params.as_default():
+        with self.params.as_default():
+            self.state.grant_access(self.get_public_key(), [key])
+            if access_pk is not None:
                 self.state.grant_access(access_pk, [key])
 
     def _get_current_chain(self):
