@@ -44,9 +44,8 @@ class CCAccount(object):
     @hookimpl
     def process_outgoing_before_encryption(self, account_key, msg):
         msg["GossipClaims"] = pet2ascii(self.head)
-        assert self.store.url
         # TODO: what do we do with dict stores?
-        msg["ChainStore"] = self.store.url
+        msg["ChainStore"] = self.store._dir
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')

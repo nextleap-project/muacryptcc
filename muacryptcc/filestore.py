@@ -63,10 +63,6 @@ class FileStore:
         # assert key == value.identity()
         self.file_set(key, bdata)
 
-    @property
-    def url(self):
-        return self._dir
-
     def file_set(self, key, value):
         if not isinstance(value, bytes):
             raise ValueError("Value must be of type bytes")
