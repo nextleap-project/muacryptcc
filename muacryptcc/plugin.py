@@ -6,7 +6,8 @@ import pluggy
 from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
-from claimchain.utils import pet2ascii
+from claimchain.utils import pet2ascii, ascii2pet
+from .filestore import FileStore
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
 
@@ -14,7 +15,8 @@ hookimpl = pluggy.HookimplMarker("muacrypt")
 @hookimpl
 def instantiate_account(plugin_manager, basedir):
     cc_dir = os.path.join(basedir, "muacryptcc")
-    cc_manager = CCAccount(cc_dir)
+    store = FileStore(cc_dir)
+    cc_manager = CCAccount(cc_dir, store)
     plugin_manager.register(cc_manager)
 
 
@@ -31,11 +33,19 @@ class CCAccount(object):
     #
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
-        assert dec_msg["GossipClaims"]
+        root_hash = dec_msg["GossipClaims"]
+        store = FileStore(dec_msg["ChainStore"])
+        peers_chain = Chain(store, root_hash=ascii2pet(root_hash))
+        assert peers_chain
+        peers_pk = View(peers_chain).params.dh.pk
+        assert peers_pk
 
     @hookimpl
     def process_outgoing_before_encryption(self, account_key, msg):
-        msg["GossipClaims"]=pet2ascii(self.head)
+        msg["GossipClaims"] = pet2ascii(self.head)
+        assert self.store.url
+        # TODO: what do we do with dict stores?
+        msg["ChainStore"] = self.store.url
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
