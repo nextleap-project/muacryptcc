@@ -1,0 +1,10 @@
+*.pyc
+__pycache__
+muacrypt.egg-info
+doc/_build
+.cache
+.pytest_cache
+*.swp
+.tox
+build
+dist
