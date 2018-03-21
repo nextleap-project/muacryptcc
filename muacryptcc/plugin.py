@@ -18,8 +18,8 @@ def instantiate_account(plugin_manager, basedir):
     cc_dir = os.path.join(basedir, "muacryptcc")
     store_dir = os.path.join(cc_dir, "store")
     store = FileStore(store_dir)
-    cc_manager = CCAccount(cc_dir, store)
-    plugin_manager.register(cc_manager)
+    cc_account = CCAccount(cc_dir, store)
+    plugin_manager.register(cc_account)
 
 
 class CCAccount(object):
