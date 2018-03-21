@@ -7,6 +7,7 @@ from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
 from claimchain.utils import pet2ascii, ascii2pet
+from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
@@ -26,6 +27,8 @@ class CCAccount(object):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
+        self.addr2root_hash = {}
+        self.addr2pk = {}
         self.store = store
         self.init_crypto_identity()
 
@@ -38,15 +41,32 @@ class CCAccount(object):
         store = FileStore(dec_msg["ChainStore"])
         peers_chain = Chain(store, root_hash=ascii2pet(root_hash))
         assert peers_chain
-        peers_pk = View(peers_chain).params.dh.pk
+        view = View(peers_chain)
+        peers_pk = view.params.dh.pk
         assert peers_pk
-        key = dec_msg["From"].encode()
-        value = root_hash.encode()
-        self.add_claim(claim=(key, value), access_pk=peers_pk)
-        self.commit_to_chain()
+        sender = parse_email_addr(dec_msg["From"])
+        self.addr2root_hash[sender] = root_hash
+        self.addr2pk[sender] = peers_pk
+        recipients = get_target_emailadr(dec_msg)
+        # TODO: handle everyone.
+        for recipient in recipients:
+            value = self.read_claim_from(peers_chain, recipient)
+            if value:
+                # for now we can only read claims about ourselves...
+                # so if we get a value it must be our head.
+                assert value == self.head
+                assert 0
 
     @hookimpl
     def process_outgoing_before_encryption(self, account_key, msg):
+        recipients = get_target_emailadr(msg)
+        for recipient in recipients:
+            key = recipient
+            value = self.addr2root_hash[recipient]
+            peers_pk = self.addr2pk[recipient]
+            if peers_pk:
+                self.add_claim(claim=(key, value), access_pk=peers_pk)
+        self.commit_to_chain()
         msg["GossipClaims"] = pet2ascii(self.head)
         # TODO: what do we do with dict stores?
         msg["ChainStore"] = self.store._dir
@@ -98,11 +118,19 @@ class CCAccount(object):
         return self.read_claim_as(self, claimkey)
 
     def read_claim_as(self, other, claimkey):
-        assert isinstance(claimkey, bytes)
+        assert callable(getattr(claimkey, 'encode', None))
         print("read-claim-as", other, repr(claimkey))
         chain = self._get_current_chain()
         with other.params.as_default():
-            return View(chain)[claimkey]
+            return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
+
+    def read_claim_from(self, chain, claimkey):
+        assert callable(getattr(claimkey, 'encode', None))
+        try:
+            with self.params.as_default():
+                return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
+        except (KeyError, ValueError):
+            return None
 
     def has_readable_claim(self, claimkey):
         return self.has_readable_claim_for(self, claimkey)
@@ -117,7 +145,7 @@ class CCAccount(object):
 
     def add_claim(self, claim, access_pk=None):
         # print("add-claim", repr(claim), repr(access_pk))
-        key, value = claim
+        key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
