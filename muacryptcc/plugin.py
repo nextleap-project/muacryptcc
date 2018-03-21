@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 
+import logging
 import os
 import json
 import pluggy
@@ -18,8 +19,8 @@ def instantiate_account(plugin_manager, basedir):
     cc_dir = os.path.join(basedir, "muacryptcc")
     store_dir = os.path.join(cc_dir, "store")
     store = FileStore(store_dir)
-    cc_manager = CCAccount(cc_dir, store)
-    plugin_manager.register(cc_manager)
+    cc_account = CCAccount(cc_dir, store)
+    plugin_manager.register(cc_account)
 
 
 class CCAccount(object):
@@ -59,14 +60,11 @@ class CCAccount(object):
                 assert value == pet2ascii(self.head)
 
     @hookimpl
-    def process_before_encryption(self, sender_addr,
-            sender_keyhandle,
-            recipient2keydata,
-            payload_msg,
-            _account):
+    def process_before_encryption(self, sender_addr, sender_keyhandle,
+                                  recipient2keydata, payload_msg, _account):
         recipients = recipient2keydata.keys()
         if not recipients:
-            import logging ; logging.debug("no recipients found.\n")
+            logging.error("no recipients found.\n")
         for recipient in recipients:
             key = recipient
             value = self.addr2root_hash.get(recipient)
@@ -74,7 +72,7 @@ class CCAccount(object):
             if peers_pk:
                 self.add_claim(claim=(key, value), access_pk=peers_pk)
             else:
-                import logging ; logging.debug(recipient + " not found")
+                logging.warn(recipient + " not found")
         self.commit_to_chain()
         payload_msg["GossipClaims"] = pet2ascii(self.head)
         # TODO: what do we do with dict stores?
