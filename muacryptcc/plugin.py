@@ -47,6 +47,7 @@ class CCAccount(object):
         sender = parse_email_addr(dec_msg["From"])
         self.addr2root_hash[sender] = root_hash
         self.addr2pk[sender] = peers_pk
+        import logging ; logging.debug(sender + " added")
         recipients = get_target_emailadr(dec_msg)
         # TODO: handle everyone.
         for recipient in recipients:
@@ -66,6 +67,8 @@ class CCAccount(object):
             peers_pk = self.addr2pk[recipient]
             if peers_pk:
                 self.add_claim(claim=(key, value), access_pk=peers_pk)
+            else:
+                import logging ; logging.debug(recipient + " not found")
         self.commit_to_chain()
         msg["GossipClaims"] = pet2ascii(self.head)
         # TODO: what do we do with dict stores?
@@ -144,7 +147,7 @@ class CCAccount(object):
         return True
 
     def add_claim(self, claim, access_pk=None):
-        # print("add-claim", repr(claim), repr(access_pk))
+        assert 0
         key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
