@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 from test_muacrypt.test_account import gen_ac_mail_msg
 
 
-def test_encrypt_decrypt_mime_text_plain(my_account_maker):
-    acc1, acc2 = my_account_maker(), my_account_maker()
+def test_encrypt_decrypt_mime_text_plain(account_maker):
+    acc1, acc2 = account_maker(), account_maker()
 
     # send a mail from addr1 with autocrypt key to addr2
     msg = gen_ac_mail_msg(acc1, acc2)
