@@ -47,7 +47,6 @@ class CCAccount(object):
         sender = parse_email_addr(dec_msg["From"])
         self.addr2root_hash[sender] = root_hash
         self.addr2pk[sender] = peers_pk
-        import logging ; logging.debug(sender + " added")
         recipients = get_target_emailadr(dec_msg)
         # TODO: handle everyone.
         for recipient in recipients:
@@ -55,24 +54,31 @@ class CCAccount(object):
             if value:
                 # for now we can only read claims about ourselves...
                 # so if we get a value it must be our head.
-                assert value == self.head
-                assert 0
+                # TODO: pet2ascii is not the right thing here.
+                # What is it? Make sure to also use below.
+                assert value == pet2ascii(self.head)
 
     @hookimpl
-    def process_outgoing_before_encryption(self, account_key, msg):
-        recipients = get_target_emailadr(msg)
+    def process_before_encryption(self, sender_addr,
+            sender_keyhandle,
+            recipient2keydata,
+            payload_msg,
+            _account):
+        recipients = recipient2keydata.keys()
+        if not recipients:
+            import logging ; logging.debug("no recipients found.\n")
         for recipient in recipients:
             key = recipient
-            value = self.addr2root_hash[recipient]
-            peers_pk = self.addr2pk[recipient]
+            value = self.addr2root_hash.get(recipient)
+            peers_pk = self.addr2pk.get(recipient)
             if peers_pk:
                 self.add_claim(claim=(key, value), access_pk=peers_pk)
             else:
                 import logging ; logging.debug(recipient + " not found")
         self.commit_to_chain()
-        msg["GossipClaims"] = pet2ascii(self.head)
+        payload_msg["GossipClaims"] = pet2ascii(self.head)
         # TODO: what do we do with dict stores?
-        msg["ChainStore"] = self.store._dir
+        payload_msg["ChainStore"] = self.store._dir
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
@@ -147,7 +153,6 @@ class CCAccount(object):
         return True
 
     def add_claim(self, claim, access_pk=None):
-        assert 0
         key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
