@@ -3,12 +3,11 @@ from __future__ import print_function, unicode_literals
 import logging
 import os
 import json
-import binascii
 import pluggy
 from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
-from claimchain.utils import pet2ascii
+from claimchain.utils import pet2ascii, bytes2ascii, ascii2bytes
 from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
 
@@ -41,7 +40,7 @@ class CCAccount(object):
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         root_hash = dec_msg["GossipClaims"]
         store = FileStore(dec_msg["ChainStore"])
-        peers_chain = Chain(store, root_hash=binascii.unhexlify(root_hash))
+        peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
         assert peers_chain
         view = View(peers_chain)
         peers_pk = view.params.dh.pk
@@ -117,7 +116,7 @@ class CCAccount(object):
 
     @property
     def head_imprint(self):
-        return binascii.hexlify(self.head)
+        return bytes2ascii(self.head)
 
     def commit_to_chain(self):
         chain = self._get_current_chain()
