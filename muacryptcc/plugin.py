@@ -3,11 +3,12 @@ from __future__ import print_function, unicode_literals
 import logging
 import os
 import json
+import binascii
 import pluggy
 from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
-from claimchain.utils import pet2ascii, ascii2pet
+from claimchain.utils import pet2ascii
 from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
 
@@ -40,7 +41,7 @@ class CCAccount(object):
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         root_hash = dec_msg["GossipClaims"]
         store = FileStore(dec_msg["ChainStore"])
-        peers_chain = Chain(store, root_hash=ascii2pet(root_hash))
+        peers_chain = Chain(store, root_hash=binascii.unhexlify(root_hash))
         assert peers_chain
         view = View(peers_chain)
         peers_pk = view.params.dh.pk
@@ -54,10 +55,8 @@ class CCAccount(object):
             value = self.read_claim_from(peers_chain, recipient)
             if value:
                 # for now we can only read claims about ourselves...
-                # so if we get a value it must be our head.
-                # TODO: pet2ascii is not the right thing here.
-                # What is it? Make sure to also use below.
-                assert value == pet2ascii(self.head)
+                # so if we get a value it must be our head imprint.
+                assert value == self.head_imprint
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -74,7 +73,7 @@ class CCAccount(object):
             else:
                 logging.warn(recipient + " not found")
         self.commit_to_chain()
-        payload_msg["GossipClaims"] = pet2ascii(self.head)
+        payload_msg["GossipClaims"] = self.head_imprint
         # TODO: what do we do with dict stores?
         payload_msg["ChainStore"] = self.store._dir
 
@@ -83,7 +82,7 @@ class CCAccount(object):
         if not os.path.exists(identity_file):
             self.params = LocalParams.generate()
             self.state = State()
-            self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.vrf.pk)
+            self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.dh.pk)
             assert self.head is None
             self.commit_to_chain()
             assert self.head
@@ -115,6 +114,10 @@ class CCAccount(object):
                 fp.write(val)
         return property(fget, fset)
     head = head()
+
+    @property
+    def head_imprint(self):
+        return binascii.hexlify(self.head)
 
     def commit_to_chain(self):
         chain = self._get_current_chain()
