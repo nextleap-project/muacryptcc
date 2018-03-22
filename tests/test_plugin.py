@@ -28,26 +28,25 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
     assert cc1.params.private_export() == cc2.params.private_export()
     assert cc1.params.vrf.sk
     assert cc1.params.vrf.sk == cc1.params.vrf.sk
+    assert cc1.head
+    assert cc1.head == cc2.head
 
 
 def test_add_claim_with_access_control(make_account):
     cc_alice = make_account("alice")
     cc_bob = make_account("bob")
-    alice_pk = cc_alice.get_public_key()
     bob_pk = cc_bob.get_public_key()
 
     assert not cc_alice.has_readable_claim(b"bob_hair")
 
-    state = cc_alice.get_current_state()
     cc_alice.add_claim(
-        state,
-        claim=(b"bob_hair", b"black"),
-        access_pk=alice_pk
+        claim=(b"bob_hair", b"black")
     )
-    cc_alice.commit_state_to_chain(state)
+    cc_alice.commit_to_chain()
     assert cc_alice.has_readable_claim(b"bob_hair")
 
-    cc_alice.add_claim(state, claim=(b"bob_feet", b"4"), access_pk=bob_pk)
-    cc_alice.commit_state_to_chain(state)
+    cc_alice.add_claim(claim=(b"bob_feet", b"4"), access_pk=bob_pk)
+    cc_alice.commit_to_chain()
     assert cc_alice.has_readable_claim_for(cc_bob, b"bob_feet")
+    assert cc_alice.has_readable_claim_for(cc_alice, b"bob_feet")
     assert not cc_alice.has_readable_claim_for(cc_bob, b"bob_hair")

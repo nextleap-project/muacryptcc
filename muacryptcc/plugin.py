@@ -1,12 +1,15 @@
 from __future__ import print_function, unicode_literals
 
+import logging
 import os
 import json
 import pluggy
 from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
-from claimchain.utils import pet2ascii
+from claimchain.utils import pet2ascii, ascii2pet
+from muacrypt.mime import parse_email_addr, get_target_emailadr
+from .filestore import FileStore
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
 
@@ -14,26 +17,75 @@ hookimpl = pluggy.HookimplMarker("muacrypt")
 @hookimpl
 def instantiate_account(plugin_manager, basedir):
     cc_dir = os.path.join(basedir, "muacryptcc")
-    cc_manager = CCAccount(cc_dir)
-    plugin_manager.register(cc_manager)
+    store_dir = os.path.join(cc_dir, "store")
+    store = FileStore(store_dir)
+    cc_account = CCAccount(cc_dir, store)
+    plugin_manager.register(cc_account)
 
 
-class CCAccount:
+class CCAccount(object):
     def __init__(self, accountdir, store=None):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
+        self.addr2root_hash = {}
+        self.addr2pk = {}
         self.store = store
         self.init_crypto_identity()
+
+    #
+    # muacrypt plugin hook implementations
+    #
+    @hookimpl
+    def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
+        root_hash = dec_msg["GossipClaims"]
+        store = FileStore(dec_msg["ChainStore"])
+        peers_chain = Chain(store, root_hash=ascii2pet(root_hash))
+        assert peers_chain
+        view = View(peers_chain)
+        peers_pk = view.params.dh.pk
+        assert peers_pk
+        sender = parse_email_addr(dec_msg["From"])
+        self.addr2root_hash[sender] = root_hash
+        self.addr2pk[sender] = peers_pk
+        recipients = get_target_emailadr(dec_msg)
+        # TODO: handle everyone.
+        for recipient in recipients:
+            value = self.read_claim_from(peers_chain, recipient)
+            if value:
+                # for now we can only read claims about ourselves...
+                # so if we get a value it must be our head.
+                # TODO: pet2ascii is not the right thing here.
+                # What is it? Make sure to also use below.
+                assert value == pet2ascii(self.head)
+
+    @hookimpl
+    def process_before_encryption(self, sender_addr, sender_keyhandle,
+                                  recipient2keydata, payload_msg, _account):
+        recipients = recipient2keydata.keys()
+        if not recipients:
+            logging.error("no recipients found.\n")
+        for recipient in recipients:
+            key = recipient
+            value = self.addr2root_hash.get(recipient)
+            peers_pk = self.addr2pk.get(recipient)
+            if peers_pk:
+                self.add_claim(claim=(key, value), access_pk=peers_pk)
+            else:
+                logging.warn(recipient + " not found")
+        self.commit_to_chain()
+        payload_msg["GossipClaims"] = pet2ascii(self.head)
+        # TODO: what do we do with dict stores?
+        payload_msg["ChainStore"] = self.store._dir
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
         if not os.path.exists(identity_file):
             self.params = LocalParams.generate()
-            state = State()
-            state.identity_info = "Hi, I'm " + pet2ascii(self.params.vrf.pk)
+            self.state = State()
+            self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.vrf.pk)
             assert self.head is None
-            self.commit_state_to_chain(state)
+            self.commit_to_chain()
             assert self.head
             with open(identity_file, 'w') as fp:
                 json.dump(self.params.private_export(), fp)
@@ -41,6 +93,8 @@ class CCAccount:
             with open(identity_file, 'r') as fp:
                 params_raw = json.load(fp)
                 self.params = LocalParams.from_dict(params_raw)
+                # TODO: load state from last block
+                self.state = State()
 
     def get_public_key(self):
         return self.params.dh.pk
@@ -62,26 +116,28 @@ class CCAccount:
         return property(fget, fset)
     head = head()
 
-    def _get_current_chain(self):
-        return Chain(self.store, root_hash=self.head)
-
-    def get_current_state(self):
-        return State()
-
-    def commit_state_to_chain(self, state):
+    def commit_to_chain(self):
         chain = self._get_current_chain()
         with self.params.as_default():
-            self.head = state.commit(chain)
+            self.head = self.state.commit(chain)
 
     def read_claim(self, claimkey):
         return self.read_claim_as(self, claimkey)
 
     def read_claim_as(self, other, claimkey):
-        assert isinstance(claimkey, bytes)
+        assert callable(getattr(claimkey, 'encode', None))
         print("read-claim-as", other, repr(claimkey))
         chain = self._get_current_chain()
         with other.params.as_default():
-            return View(chain)[claimkey]
+            return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
+
+    def read_claim_from(self, chain, claimkey):
+        assert callable(getattr(claimkey, 'encode', None))
+        try:
+            with self.params.as_default():
+                return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
+        except (KeyError, ValueError):
+            return None
 
     def has_readable_claim(self, claimkey):
         return self.has_readable_claim_for(self, claimkey)
@@ -94,19 +150,15 @@ class CCAccount:
             return False
         return True
 
-    def add_claim(self, state, claim, access_pk=None):
-        # print("add-claim", repr(claim), repr(access_pk))
-        key, value = claim
+    def add_claim(self, claim, access_pk=None):
+        key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
-        state[key] = value
-        if access_pk is not None:
-            with self.params.as_default():
-                state.grant_access(access_pk, [key])
+        self.state[key] = value
+        with self.params.as_default():
+            self.state.grant_access(self.get_public_key(), [key])
+            if access_pk is not None:
+                self.state.grant_access(access_pk, [key])
 
-    #
-    # muacrypt plugin hook implementations
-    #
-    @hookimpl
-    def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
-        pass
+    def _get_current_chain(self):
+        return Chain(self.store, root_hash=self.head)

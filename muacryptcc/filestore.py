@@ -45,6 +45,7 @@ def ext_hook(code, data):
 
 class FileStore:
     def __init__(self, dir):
+        assert dir
         self._dir = dir
         if not os.path.exists(dir):
             os.makedirs(dir)
@@ -68,14 +69,14 @@ class FileStore:
         bn = key2basename(key)
         with open(os.path.join(self._dir, bn), "wb") as f:
             f.write(value)
-            print("store-set {!r}={!r}".format(bn, value))
+            # print("store-set {!r}={!r}".format(bn, value))
 
     def file_get(self, key):
         bn = key2basename(key)
         try:
             with open(os.path.join(self._dir, bn), "rb") as f:
                 val = f.read()
-                print("store-get {!r} -> {!r}".format(bn, val))
+                # print("store-get {!r} -> {!r}".format(bn, val))
             return val
         except IOError:
             raise KeyError(key)
