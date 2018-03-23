@@ -49,7 +49,6 @@ class CCAccount(object):
         self.addr2root_hash[sender] = root_hash
         self.addr2pk[sender] = peers_pk
         recipients = get_target_emailadr(dec_msg)
-        # TODO: handle everyone.
         for recipient in recipients:
             pagh = addr2pagh[recipient]
             value = self.read_claim_from(peers_chain, recipient)
@@ -64,12 +63,13 @@ class CCAccount(object):
         recipients = recipient2keydata.keys()
         if not recipients:
             logging.error("no recipients found.\n")
+
         for recipient in recipients:
-            key = recipient
-            value = bytes2ascii(recipient2keydata.get(recipient))
-            peers_pk = self.addr2pk.get(recipient)
-            if value:
-                self.add_claim(claim=(key, value), access_pk=peers_pk)
+            claim = recipient, bytes2ascii(recipient2keydata.get(recipient))
+            for reader in recipients:
+                pk = self.addr2pk.get(reader)
+                self.add_claim(claim, access_pk=pk)
+
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
         # TODO: what do we do with dict stores?
