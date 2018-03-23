@@ -23,6 +23,7 @@ def test_claim_headers_in_encrypted_mail(account_maker):
     dec_msg = send_and_process_encrypted_mail(acc2, acc1).dec_msg
     account = get_cc_account(dec_msg['ChainStore'])
     assert dec_msg['GossipClaims'] == account.head_imprint
+    assert account.has_readable_claim(acc1.addr)
 
 
 # send a mail from acc1 with autocrypt key to acc2

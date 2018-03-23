@@ -51,11 +51,12 @@ class CCAccount(object):
         recipients = get_target_emailadr(dec_msg)
         # TODO: handle everyone.
         for recipient in recipients:
+            pagh = addr2pagh[recipient]
             value = self.read_claim_from(peers_chain, recipient)
             if value:
                 # for now we can only read claims about ourselves...
                 # so if we get a value it must be our head imprint.
-                assert value == self.head_imprint
+                assert value == bytes2ascii(pagh.keydata)
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -65,12 +66,10 @@ class CCAccount(object):
             logging.error("no recipients found.\n")
         for recipient in recipients:
             key = recipient
-            value = self.addr2root_hash.get(recipient)
+            value = bytes2ascii(recipient2keydata.get(recipient))
             peers_pk = self.addr2pk.get(recipient)
-            if peers_pk:
+            if value:
                 self.add_claim(claim=(key, value), access_pk=peers_pk)
-            else:
-                logging.warn(recipient + " not found")
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
         # TODO: what do we do with dict stores?
