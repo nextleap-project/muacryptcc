@@ -31,15 +31,9 @@ def test_claim_headers_in_encrypted_mail(account_maker):
     acc1, acc2 = account_maker(), account_maker()
     send_and_process_mail(acc1, acc2)
 
-    r, mail = send_and_process_encrypted_mail(acc2, acc1)
-    cc2 = get_cc_account(mail.dec_msg['ChainStore'])
-    ac2 = r.pah
+    cc2, ac2 = get_cc_and_ac(send_and_process_encrypted_mail(acc2, acc1))
+    cc1, ac1 = get_cc_and_ac(send_and_process_encrypted_mail(acc1, acc2))
 
-    r, mail = send_and_process_encrypted_mail(acc1, acc2)
-    cc1 = get_cc_account(mail.dec_msg['ChainStore'])
-    ac1 = r.pah
-
-    assert mail.dec_msg['GossipClaims'] == cc1.head_imprint
     assert cc1.read_claim_as(cc2, acc2.addr) == bytes2ascii(ac2.keydata)
 
 
@@ -53,11 +47,20 @@ def send_and_process_mail(acc1, acc2):
 def send_and_process_encrypted_mail(acc1, acc2):
     """Send an encrypted mail from acc1 to acc2
        Decrypt and process it.
-       Returns the decryption result with enc_msg and dec_msg.
+       Returns the result of processing the Autocrypt header
+       and the decryption result.
     """
     msg = gen_ac_mail_msg(acc1, acc2, payload="hello ä umlaut", charset="utf8")
     enc_msg = acc1.encrypt_mime(msg, [acc2.addr]).enc_msg
     return acc2.process_incoming(enc_msg), acc2.decrypt_mime(enc_msg)
+
+def get_cc_and_ac(pair):
+    """
+       Claimchain Account corresponding to the CC headers
+       and the processed autocrypt header
+    """
+    processed, decrypted = pair
+    return get_cc_account(decrypted.dec_msg['ChainStore']), processed.pah
 
 
 def get_cc_account(store_dir):
