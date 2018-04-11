@@ -34,19 +34,19 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
 
 def test_add_claim_with_access_control(make_account):
     cc_alice = make_account("alice")
-    cc_bob = make_account("bob")
+    cc_bob = make_account("bo")
     bob_pk = cc_bob.get_public_key()
 
-    assert not cc_alice.has_readable_claim(b"bob_hair")
+    assert not cc_alice.has_readable_claim("bob_hair")
 
     cc_alice.add_claim(
-        claim=(b"bob_hair", b"black")
+        claim=("bob_hair", "black")
     )
     cc_alice.commit_to_chain()
-    assert cc_alice.has_readable_claim(b"bob_hair")
+    assert cc_alice.has_readable_claim("bob_hair")
 
-    cc_alice.add_claim(claim=(b"bob_feet", b"4"), access_pk=bob_pk)
+    cc_alice.add_claim(claim=("bob_feet", "4"), access_pk=bob_pk)
     cc_alice.commit_to_chain()
-    assert cc_alice.has_readable_claim_for(cc_bob, b"bob_feet")
-    assert cc_alice.has_readable_claim_for(cc_alice, b"bob_feet")
-    assert not cc_alice.has_readable_claim_for(cc_bob, b"bob_hair")
+    assert cc_alice.has_readable_claim_for(cc_bob, "bob_feet")
+    assert cc_alice.has_readable_claim_for(cc_alice, "bob_feet")
+    assert not cc_alice.has_readable_claim_for(cc_bob, "bob_hair")

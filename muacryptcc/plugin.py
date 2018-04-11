@@ -122,34 +122,28 @@ class CCAccount(object):
         with self.params.as_default():
             self.head = self.state.commit(chain)
 
-    def read_claim(self, claimkey):
-        return self.read_claim_as(self, claimkey)
-
-    def read_claim_as(self, other, claimkey):
-        assert callable(getattr(claimkey, 'encode', None))
-        print("read-claim-as", other, repr(claimkey))
-        chain = self._get_current_chain()
-        with other.params.as_default():
-            return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
-
-    def read_claim_from(self, chain, claimkey):
-        assert callable(getattr(claimkey, 'encode', None))
+    def read_claim(self, claimkey, chain=None, reader=None):
+        if chain is None:
+            chain = self._get_current_chain()
+        if reader is None:
+            reader = self
         try:
-            with self.params.as_default():
+            with reader.params.as_default():
                 return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
         except (KeyError, ValueError):
             return None
+
+    def read_claim_as(self, other, claimkey):
+        return self.read_claim(claimkey, reader=other)
+
+    def read_claim_from(self, chain, claimkey):
+        return self.read_claim(claimkey, chain=chain)
 
     def has_readable_claim(self, claimkey):
         return self.has_readable_claim_for(self, claimkey)
 
     def has_readable_claim_for(self, other, claimkey):
-        assert isinstance(claimkey, bytes)
-        try:
-            self.read_claim_as(other, claimkey)
-        except (KeyError, ValueError):
-            return False
-        return True
+        return self.read_claim_as(other, claimkey) is not None
 
     def add_claim(self, claim, access_pk=None):
         key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
