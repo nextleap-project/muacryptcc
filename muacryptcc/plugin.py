@@ -51,7 +51,7 @@ class CCAccount(object):
         recipients = get_target_emailadr(dec_msg)
         for recipient in recipients:
             pagh = addr2pagh[recipient]
-            value = self.read_claim_from(peers_chain, recipient)
+            value = self.read_claim(recipient, chain=peers_chain)
             if value:
                 # for now we can only read claims about ourselves...
                 # so if we get a value it must be our head imprint.
@@ -132,12 +132,6 @@ class CCAccount(object):
                 return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
         except (KeyError, ValueError):
             return None
-
-    def read_claim_as(self, other, claimkey):
-        return self.read_claim(claimkey, reader=other)
-
-    def read_claim_from(self, chain, claimkey):
-        return self.read_claim(claimkey, chain=chain)
 
     def add_claim(self, claim, access_pk=None):
         key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')

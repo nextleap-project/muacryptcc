@@ -47,6 +47,6 @@ def test_add_claim_with_access_control(make_account):
 
     cc_alice.add_claim(claim=("bob_feet", "4"), access_pk=bob_pk)
     cc_alice.commit_to_chain()
-    assert cc_alice.read_claim_as(cc_bob, "bob_feet")
-    assert cc_alice.read_claim_as(cc_alice, "bob_feet")
-    assert not cc_alice.read_claim_as(cc_bob, "bob_hair")
+    assert cc_alice.read_claim("bob_feet", reader=cc_bob)
+    assert cc_alice.read_claim("bob_feet", reader=cc_alice)
+    assert not cc_alice.read_claim("bob_hair", reader=cc_bob)
