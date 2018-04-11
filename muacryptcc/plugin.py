@@ -139,12 +139,6 @@ class CCAccount(object):
     def read_claim_from(self, chain, claimkey):
         return self.read_claim(claimkey, chain=chain)
 
-    def has_readable_claim(self, claimkey):
-        return self.has_readable_claim_for(self, claimkey)
-
-    def has_readable_claim_for(self, other, claimkey):
-        return self.read_claim_as(other, claimkey) is not None
-
     def add_claim(self, claim, access_pk=None):
         key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
         assert isinstance(key, bytes)

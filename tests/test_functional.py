@@ -25,7 +25,7 @@ def test_claim_headers_in_encrypted_mail(account_maker):
     dec_msg = send_encrypted_mail(acc2, acc1)[1].dec_msg
     cc2 = get_cc_account(dec_msg['ChainStore'])
     assert dec_msg['GossipClaims'] == cc2.head_imprint
-    assert cc2.has_readable_claim(acc1.addr)
+    assert cc2.read_claim(acc1.addr)
 
 
 def test_claims_contain_keys(account_maker):
