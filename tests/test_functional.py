@@ -35,7 +35,8 @@ def test_claims_contain_keys(account_maker):
     cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, acc2))
 
-    assert cc1.read_claim(acc2.addr, reader=cc2) == bytes2ascii(ac2.keydata)
+    data = cc1.read_claim(acc2.addr, reader=cc2)
+    assert data['key'] == bytes2ascii(ac2.keydata)
 
 
 def test_gossip_claims(account_maker):
@@ -47,7 +48,8 @@ def test_gossip_claims(account_maker):
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
 
-    assert cc1.read_claim(acc3.addr, reader=cc2) == bytes2ascii(ac3.keydata)
+    data = cc1.read_claim(acc3.addr, reader=cc2)
+    assert data['key'] == bytes2ascii(ac3.keydata)
 
 
 # send a mail from acc1 with autocrypt key to acc2

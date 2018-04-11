@@ -55,7 +55,7 @@ class CCAccount(object):
             if value:
                 # for now we can only read claims about ourselves...
                 # so if we get a value it must be our head imprint.
-                assert value == bytes2ascii(pagh.keydata)
+                assert value['key'] == bytes2ascii(pagh.keydata)
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -65,10 +65,13 @@ class CCAccount(object):
             logging.error("no recipients found.\n")
 
         for recipient in recipients:
-            claim = recipient, bytes2ascii(recipient2keydata.get(recipient))
+            key = recipient
+            value = dict(
+                key=bytes2ascii(recipient2keydata.get(recipient))
+            )
             for reader in recipients:
                 pk = self.addr2pk.get(reader)
-                self.add_claim(claim, access_pk=pk)
+                self.add_claim((key, value), access_pk=pk)
 
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
