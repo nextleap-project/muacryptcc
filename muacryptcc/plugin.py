@@ -129,12 +129,14 @@ class CCAccount(object):
             reader = self
         try:
             with reader.params.as_default():
-                return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
+                value = View(chain)[claimkey.encode('utf-8')]
+                return json.loads(value.decode('utf-8'))
         except (KeyError, ValueError):
             return None
 
     def add_claim(self, claim, access_pk=None):
-        key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
+        key = claim[0].encode('utf-8')
+        value = json.dumps(claim[1]).encode('utf-8')
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
