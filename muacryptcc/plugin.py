@@ -51,11 +51,11 @@ class CCAccount(object):
         recipients = get_target_emailadr(dec_msg)
         for recipient in recipients:
             pagh = addr2pagh[recipient]
-            value = self.read_claim_from(peers_chain, recipient)
+            value = self.read_claim(recipient, chain=peers_chain)
             if value:
                 # for now we can only read claims about ourselves...
                 # so if we get a value it must be our head imprint.
-                assert value == bytes2ascii(pagh.keydata)
+                assert value['key'] == bytes2ascii(pagh.keydata)
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -65,10 +65,13 @@ class CCAccount(object):
             logging.error("no recipients found.\n")
 
         for recipient in recipients:
-            claim = recipient, bytes2ascii(recipient2keydata.get(recipient))
+            key = recipient
+            value = dict(
+                key=bytes2ascii(recipient2keydata.get(recipient))
+            )
             for reader in recipients:
                 pk = self.addr2pk.get(reader)
-                self.add_claim(claim, access_pk=pk)
+                self.add_claim((key, value), access_pk=pk)
 
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
@@ -122,37 +125,21 @@ class CCAccount(object):
         with self.params.as_default():
             self.head = self.state.commit(chain)
 
-    def read_claim(self, claimkey):
-        return self.read_claim_as(self, claimkey)
-
-    def read_claim_as(self, other, claimkey):
-        assert callable(getattr(claimkey, 'encode', None))
-        print("read-claim-as", other, repr(claimkey))
-        chain = self._get_current_chain()
-        with other.params.as_default():
-            return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
-
-    def read_claim_from(self, chain, claimkey):
-        assert callable(getattr(claimkey, 'encode', None))
+    def read_claim(self, claimkey, chain=None, reader=None):
+        if chain is None:
+            chain = self._get_current_chain()
+        if reader is None:
+            reader = self
         try:
-            with self.params.as_default():
-                return View(chain)[claimkey.encode('utf-8')].decode('utf-8')
+            with reader.params.as_default():
+                value = View(chain)[claimkey.encode('utf-8')]
+                return json.loads(value.decode('utf-8'))
         except (KeyError, ValueError):
             return None
 
-    def has_readable_claim(self, claimkey):
-        return self.has_readable_claim_for(self, claimkey)
-
-    def has_readable_claim_for(self, other, claimkey):
-        assert isinstance(claimkey, bytes)
-        try:
-            self.read_claim_as(other, claimkey)
-        except (KeyError, ValueError):
-            return False
-        return True
-
     def add_claim(self, claim, access_pk=None):
-        key, value = claim[0].encode('utf-8'), claim[1].encode('utf-8')
+        key = claim[0].encode('utf-8')
+        value = json.dumps(claim[1]).encode('utf-8')
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
