@@ -28,7 +28,7 @@ def test_claim_headers_in_encrypted_mail(account_maker):
     assert cc2.read_claim(acc1.addr)
 
 
-def test_claims_contain_keys(account_maker):
+def test_claims_contain_keys_and_cc_reference(account_maker):
     acc1, acc2 = account_maker(), account_maker()
     send_mail(acc1, acc2)
 
@@ -37,6 +37,8 @@ def test_claims_contain_keys(account_maker):
 
     data = cc1.read_claim(acc2.addr, reader=cc2)
     assert data['key'] == bytes2ascii(ac2.keydata)
+    assert data['root_hash'] == cc2.head_imprint
+    assert data['store_url'] == cc2.store._dir
 
 
 def test_gossip_claims(account_maker):

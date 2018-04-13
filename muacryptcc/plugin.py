@@ -28,8 +28,7 @@ class CCAccount(object):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
-        self.addr2root_hash = {}
-        self.addr2pk = {}
+        self.addr2cc_info = {}
         self.store = store
         self.init_crypto_identity()
 
@@ -39,15 +38,19 @@ class CCAccount(object):
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         root_hash = dec_msg["GossipClaims"]
-        store = FileStore(dec_msg["ChainStore"])
+        store_url = dec_msg["ChainStore"]
+        store = FileStore(store_url)
         peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
         assert peers_chain
         view = View(peers_chain)
         peers_pk = view.params.dh.pk
         assert peers_pk
         sender = parse_email_addr(dec_msg["From"])
-        self.addr2root_hash[sender] = root_hash
-        self.addr2pk[sender] = peers_pk
+        self.addr2cc_info[sender] = dict(
+            root_hash=root_hash,
+            store_url=store_url,
+            public_key=peers_pk
+        )
         recipients = get_target_emailadr(dec_msg)
         for recipient in recipients:
             pagh = addr2pagh[recipient]
@@ -66,12 +69,15 @@ class CCAccount(object):
 
         for recipient in recipients:
             key = recipient
+            recipient_info = self.addr2cc_info.get(recipient) or {}
             value = dict(
-                key=bytes2ascii(recipient2keydata.get(recipient))
+                key=bytes2ascii(recipient2keydata.get(recipient)),
+                store_url=recipient_info.get("store_url"),
+                root_hash=recipient_info.get("root_hash")
             )
             for reader in recipients:
-                pk = self.addr2pk.get(reader)
-                self.add_claim((key, value), access_pk=pk)
+                reader_info = self.addr2cc_info.get(reader) or {}
+                self.add_claim((key, value), access_pk=reader_info.get("public_key"))
 
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
