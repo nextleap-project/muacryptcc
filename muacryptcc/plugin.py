@@ -37,20 +37,13 @@ class CCAccount(object):
     #
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
+        addr = parse_email_addr(dec_msg["From"])
         root_hash = dec_msg["GossipClaims"]
         store_url = dec_msg["ChainStore"]
+        self.register_peer(addr, root_hash, store_url)
+
         store = FileStore(store_url)
         peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
-        assert peers_chain
-        view = View(peers_chain)
-        peers_pk = view.params.dh.pk
-        assert peers_pk
-        sender = parse_email_addr(dec_msg["From"])
-        self.addr2cc_info[sender] = dict(
-            root_hash=root_hash,
-            store_url=store_url,
-            public_key=peers_pk
-        )
         recipients = get_target_emailadr(dec_msg)
         for recipient in recipients:
             pagh = addr2pagh[recipient]
@@ -68,16 +61,9 @@ class CCAccount(object):
             logging.error("no recipients found.\n")
 
         for recipient in recipients:
-            key = recipient
-            recipient_info = self.addr2cc_info.get(recipient) or {}
-            value = dict(
-                key=bytes2ascii(recipient2keydata.get(recipient)),
-                store_url=recipient_info.get("store_url"),
-                root_hash=recipient_info.get("root_hash")
-            )
+            claim = self.claim_about(recipient, recipient2keydata.get(recipient))
             for reader in recipients:
-                reader_info = self.addr2cc_info.get(reader) or {}
-                self.add_claim((key, value), access_pk=reader_info.get("public_key"))
+                self.add_claim(claim, reader)
 
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
@@ -126,6 +112,29 @@ class CCAccount(object):
     def head_imprint(self):
         return bytes2ascii(self.head)
 
+    def register_peer(self, addr, root_hash, store_url, pk = None):
+        if not pk:
+            store = FileStore(store_url)
+            chain = Chain(store, root_hash=ascii2bytes(root_hash))
+            assert chain
+            view = View(chain)
+            pk = view.params.dh.pk
+        assert pk
+        self.addr2cc_info[addr] = dict(
+            root_hash=root_hash,
+            store_url=store_url,
+            public_key=pk
+        )
+
+    def claim_about(self, addr, keydata):
+        info = self.addr2cc_info.get(addr) or {}
+        content = dict(
+            key=bytes2ascii(keydata),
+            store_url=info.get("store_url"),
+            root_hash=info.get("root_hash")
+        )
+        return (addr, content)
+
     def commit_to_chain(self):
         chain = self._get_current_chain()
         with self.params.as_default():
@@ -143,7 +152,7 @@ class CCAccount(object):
         except (KeyError, ValueError):
             return None
 
-    def add_claim(self, claim, access_pk=None):
+    def add_claim(self, claim, reader=None):
         key = claim[0].encode('utf-8')
         value = json.dumps(claim[1]).encode('utf-8')
         assert isinstance(key, bytes)
@@ -151,8 +160,11 @@ class CCAccount(object):
         self.state[key] = value
         with self.params.as_default():
             self.state.grant_access(self.get_public_key(), [key])
-            if access_pk is not None:
-                self.state.grant_access(access_pk, [key])
+            if reader:
+                reader_info = self.addr2cc_info.get(reader) or {}
+                access_pk = reader_info.get("public_key")
+                if access_pk:
+                    self.state.grant_access(access_pk, [key])
 
     def _get_current_chain(self):
         return Chain(self.store, root_hash=self.head)
