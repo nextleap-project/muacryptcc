@@ -57,14 +57,16 @@ class CCAccount(object):
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
                                   recipient2keydata, payload_msg, _account):
-        recipients = recipient2keydata.keys()
-        if not recipients:
+        addrs = recipient2keydata.keys()
+        if not addrs:
             logging.error("no recipients found.\n")
 
-        for recipient in recipients:
-            claim = self.claim_about(recipient, recipient2keydata.get(recipient))
-            for reader in recipients:
-                self.add_claim(claim, reader)
+        for addr in addrs:
+            self.add_claim(self.claim_about(addr, recipient2keydata.get(addr)))
+
+        for reader in addrs:
+            if self.can_share_with(reader):
+                self.share_claims(addrs, reader)
 
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
@@ -151,7 +153,7 @@ class CCAccount(object):
         except (KeyError, ValueError):
             return None
 
-    def add_claim(self, claim, reader=None):
+    def add_claim(self, claim):
         key = claim[0].encode('utf-8')
         value = json.dumps(claim[1]).encode('utf-8')
         assert isinstance(key, bytes)
@@ -159,11 +161,18 @@ class CCAccount(object):
         self.state[key] = value
         with self.params.as_default():
             self.state.grant_access(self.get_public_key(), [key])
-            if reader:
-                reader_info = self.addr2cc_info.get(reader) or {}
-                access_pk = reader_info.get("public_key")
-                if access_pk:
-                    self.state.grant_access(access_pk, [key])
+
+    def can_share_with(self, peer):
+        reader_info = self.addr2cc_info.get(peer) or {}
+        return bool(reader_info.get('public_key'))
+
+    def share_claims(self, claim_keys, reader):
+        claim_keys = [key.encode('utf-8') for key in claim_keys]
+        reader_info = self.addr2cc_info.get(reader) or {}
+        pk = reader_info.get("public_key")
+        assert pk
+        with self.params.as_default():
+            self.state.grant_access(pk, claim_keys)
 
     def _get_current_chain(self):
         return Chain(self.store, root_hash=self.head)

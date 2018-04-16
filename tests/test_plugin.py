@@ -46,7 +46,8 @@ def test_add_claim_with_access_control(make_account):
     assert cc_alice.read_claim("bob_hair")
 
     cc_alice.register_peer('bob', cc_bob.head_imprint, '', pk=bob_pk)
-    cc_alice.add_claim(claim=("bob_feet", "4"), reader='bob')
+    cc_alice.add_claim(claim=("bob_feet", "4"))
+    cc_alice.share_claims(["bob_feet"], reader='bob')
     cc_alice.commit_to_chain()
     assert cc_alice.read_claim("bob_feet")
     assert cc_bob.read_claim("bob_feet", chain=cc_alice)
