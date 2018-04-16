@@ -35,7 +35,7 @@ def test_claims_contain_keys_and_cc_reference(account_maker):
     cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, acc2))
 
-    data = cc1.read_claim(acc2.addr, reader=cc2)
+    data = cc2.read_claim(acc2.addr, chain=cc1)
     assert data['key'] == bytes2ascii(ac2.keydata)
     assert data['root_hash'] == cc2.head_imprint
     assert data['store_url'] == cc2.store._dir
@@ -50,7 +50,7 @@ def test_gossip_claims(account_maker):
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
 
-    data = cc1.read_claim(acc3.addr, reader=cc2)
+    data = cc2.read_claim(acc3.addr, chain=cc1)
     assert data['key'] == bytes2ascii(ac3.keydata)
 
 
@@ -64,7 +64,7 @@ def test_reply_to_gossip_claims(account_maker):
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, [acc1, acc2]))
 
-    data = cc3.read_claim(acc2.addr, reader=cc2)
+    data = cc2.read_claim(acc2.addr, chain=cc3)
     assert data['key'] == bytes2ascii(ac2.keydata)
     assert data['root_hash'] == cc2.head_imprint
 

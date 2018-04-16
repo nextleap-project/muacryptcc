@@ -141,13 +141,11 @@ class CCAccount(object):
         with self.params.as_default():
             self.head = self.state.commit(chain)
 
-    def read_claim(self, claimkey, chain=None, reader=None):
+    def read_claim(self, claimkey, chain=None):
         if chain is None:
             chain = self._get_current_chain()
-        if reader is None:
-            reader = self
         try:
-            with reader.params.as_default():
+            with self.params.as_default():
                 value = View(chain)[claimkey.encode('utf-8')]
                 return json.loads(value.decode('utf-8'))
         except (KeyError, ValueError):
