@@ -37,21 +37,22 @@ class CCAccount(object):
     #
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
-        addr = parse_email_addr(dec_msg["From"])
+        sender_addr = parse_email_addr(dec_msg["From"])
         root_hash = dec_msg["GossipClaims"]
         store_url = dec_msg["ChainStore"]
-        self.register_peer(addr, root_hash, store_url)
+        self.register_peer(sender_addr, root_hash, store_url)
 
         store = FileStore(store_url)
         peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
         recipients = get_target_emailadr(dec_msg)
-        for recipient in recipients:
-            pagh = addr2pagh[recipient]
-            value = self.read_claim(recipient, chain=peers_chain)
+        for addr in recipients:
+            pagh = addr2pagh[addr]
+            value = self.read_claim(addr, chain=peers_chain)
             if value:
-                # for now we can only read claims about ourselves...
-                # so if we get a value it must be our head imprint.
                 assert value['key'] == bytes2ascii(pagh.keydata)
+                # TODO: check for existing entries
+                if value['store_url']:
+                    self.register_peer(addr, value['root_hash'], value['store_url'])
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -112,7 +113,7 @@ class CCAccount(object):
     def head_imprint(self):
         return bytes2ascii(self.head)
 
-    def register_peer(self, addr, root_hash, store_url, pk = None):
+    def register_peer(self, addr, root_hash, store_url, pk=None):
         if not pk:
             store = FileStore(store_url)
             chain = Chain(store, root_hash=ascii2bytes(root_hash))
