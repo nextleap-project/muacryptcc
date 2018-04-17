@@ -28,8 +28,7 @@ class CCAccount(object):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
-        self.addr2root_hash = {}
-        self.addr2pk = {}
+        self.addr2cc_info = {}
         self.store = store
         self.init_crypto_identity()
 
@@ -38,40 +37,36 @@ class CCAccount(object):
     #
     @hookimpl
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
+        sender_addr = parse_email_addr(dec_msg["From"])
         root_hash = dec_msg["GossipClaims"]
-        store = FileStore(dec_msg["ChainStore"])
+        store_url = dec_msg["ChainStore"]
+        self.register_peer(sender_addr, root_hash, store_url)
+
+        store = FileStore(store_url)
         peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
-        assert peers_chain
-        view = View(peers_chain)
-        peers_pk = view.params.dh.pk
-        assert peers_pk
-        sender = parse_email_addr(dec_msg["From"])
-        self.addr2root_hash[sender] = root_hash
-        self.addr2pk[sender] = peers_pk
         recipients = get_target_emailadr(dec_msg)
-        for recipient in recipients:
-            pagh = addr2pagh[recipient]
-            value = self.read_claim(recipient, chain=peers_chain)
+        for addr in recipients:
+            pagh = addr2pagh[addr]
+            value = self.read_claim(addr, chain=peers_chain)
             if value:
-                # for now we can only read claims about ourselves...
-                # so if we get a value it must be our head imprint.
                 assert value['key'] == bytes2ascii(pagh.keydata)
+                # TODO: check for existing entries
+                if value['store_url']:
+                    self.register_peer(addr, value['root_hash'], value['store_url'])
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
                                   recipient2keydata, payload_msg, _account):
-        recipients = recipient2keydata.keys()
-        if not recipients:
+        addrs = recipient2keydata.keys()
+        if not addrs:
             logging.error("no recipients found.\n")
 
-        for recipient in recipients:
-            key = recipient
-            value = dict(
-                key=bytes2ascii(recipient2keydata.get(recipient))
-            )
-            for reader in recipients:
-                pk = self.addr2pk.get(reader)
-                self.add_claim((key, value), access_pk=pk)
+        for addr in addrs:
+            self.add_claim(self.claim_about(addr, recipient2keydata.get(addr)))
+
+        for reader in addrs:
+            if self.can_share_with(reader):
+                self.share_claims(addrs, reader)
 
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
@@ -120,24 +115,45 @@ class CCAccount(object):
     def head_imprint(self):
         return bytes2ascii(self.head)
 
+    def register_peer(self, addr, root_hash, store_url, pk=None):
+        if not pk:
+            store = FileStore(store_url)
+            chain = Chain(store, root_hash=ascii2bytes(root_hash))
+            assert chain
+            view = View(chain)
+            pk = view.params.dh.pk
+        assert pk
+        self.addr2cc_info[addr] = dict(
+            root_hash=root_hash,
+            store_url=store_url,
+            public_key=pk
+        )
+
+    def claim_about(self, addr, keydata):
+        info = self.addr2cc_info.get(addr) or {}
+        content = dict(
+            key=bytes2ascii(keydata),
+            store_url=info.get("store_url"),
+            root_hash=info.get("root_hash")
+        )
+        return (addr, content)
+
     def commit_to_chain(self):
         chain = self._get_current_chain()
         with self.params.as_default():
             self.head = self.state.commit(chain)
 
-    def read_claim(self, claimkey, chain=None, reader=None):
+    def read_claim(self, claimkey, chain=None):
         if chain is None:
             chain = self._get_current_chain()
-        if reader is None:
-            reader = self
         try:
-            with reader.params.as_default():
+            with self.params.as_default():
                 value = View(chain)[claimkey.encode('utf-8')]
                 return json.loads(value.decode('utf-8'))
         except (KeyError, ValueError):
             return None
 
-    def add_claim(self, claim, access_pk=None):
+    def add_claim(self, claim):
         key = claim[0].encode('utf-8')
         value = json.dumps(claim[1]).encode('utf-8')
         assert isinstance(key, bytes)
@@ -145,8 +161,18 @@ class CCAccount(object):
         self.state[key] = value
         with self.params.as_default():
             self.state.grant_access(self.get_public_key(), [key])
-            if access_pk is not None:
-                self.state.grant_access(access_pk, [key])
+
+    def can_share_with(self, peer):
+        reader_info = self.addr2cc_info.get(peer) or {}
+        return bool(reader_info.get('public_key'))
+
+    def share_claims(self, claim_keys, reader):
+        claim_keys = [key.encode('utf-8') for key in claim_keys]
+        reader_info = self.addr2cc_info.get(reader) or {}
+        pk = reader_info.get("public_key")
+        assert pk
+        with self.params.as_default():
+            self.state.grant_access(pk, claim_keys)
 
     def _get_current_chain(self):
         return Chain(self.store, root_hash=self.head)
