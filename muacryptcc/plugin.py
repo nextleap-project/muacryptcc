@@ -42,8 +42,7 @@ class CCAccount(object):
         store_url = dec_msg["ChainStore"]
         self.register_peer(sender_addr, root_hash, store_url)
 
-        store = FileStore(store_url)
-        peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
+        peers_chain = self.get_chain(store_url, root_hash)
         recipients = get_target_emailadr(dec_msg)
         for addr in recipients:
             pagh = addr2pagh[addr]
@@ -111,8 +110,7 @@ class CCAccount(object):
 
     def register_peer(self, addr, root_hash, store_url, chain=None):
         if not chain:
-            store = FileStore(store_url)
-            chain = Chain(store, root_hash=ascii2bytes(root_hash))
+            chain = self.get_chain(store_url, root_hash)
         assert chain
         view = View(chain)
         pk = view.params.dh.pk
@@ -122,6 +120,10 @@ class CCAccount(object):
             store_url=store_url,
             public_key=pk
         )
+
+    def get_chain(self, store_url, root_hash):
+        store = FileStore(store_url)
+        return Chain(store, root_hash=ascii2bytes(root_hash))
 
     def claim_about(self, addr, keydata):
         info = self.addr2cc_info.get(addr) or {}
