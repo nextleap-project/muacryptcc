@@ -1,54 +1,119 @@
-from __future__ import print_function
+# -*- coding: utf-8 -*-
+# vim:ts=4:sw=4:expandtab
 
+from __future__ import unicode_literals
 import os
-import pytest
+from test_muacrypt.test_account import gen_ac_mail_msg
+from muacrypt.account import Account
 from muacryptcc.plugin import CCAccount
 from muacryptcc.filestore import FileStore
+from claimchain.utils import bytes2ascii
 
 
-@pytest.fixture(params=["dict", "filestore"])
-def make_account(request, tmpdir):
-    def maker(name, store=None):
-        accountdir = tmpdir.join(name).strpath
-        if store is None:
-            if request.param == "dict":
-                store = {}
-            else:
-                # a global filestore where blocks from all accounts are stored
-                storedir = os.path.join(str(tmpdir), "filestore")
-                store = FileStore(storedir)
-        return CCAccount(accountdir=accountdir, store=store)
-    return maker
+def test_no_claim_headers_in_cleartext_mail(account_maker):
+    acc1, acc2 = account_maker(), account_maker()
+
+    msg = send_mail(acc1, acc2)
+    assert not msg['GossipClaims']
+    assert not msg['ClaimStore']
 
 
-def test_account_can_be_propertly_instanted_from_store(make_account):
-    cc1 = make_account("alice")
-    cc2 = make_account("alice", store=cc1.store)
+def test_claim_headers_in_encrypted_mail(account_maker):
+    acc1, acc2 = account_maker(), account_maker()
+    send_mail(acc1, acc2)
 
-    assert cc1.params.private_export() == cc2.params.private_export()
-    assert cc1.params.vrf.sk
-    assert cc1.params.vrf.sk == cc1.params.vrf.sk
-    assert cc1.head
-    assert cc1.head == cc2.head
+    dec_msg = send_encrypted_mail(acc2, acc1)[1].dec_msg
+    cc2 = get_cc_account(dec_msg['ChainStore'])
+    assert dec_msg['GossipClaims'] == cc2.head_imprint
+    assert cc2.read_claim(acc1.addr)
 
 
-def test_add_claim_with_access_control(make_account):
-    cc_alice = make_account("alice")
-    cc_bob = make_account("bo")
-    bob_pk = cc_bob.get_public_key()
+def test_claims_contain_keys_and_cc_reference(account_maker):
+    acc1, acc2 = account_maker(), account_maker()
+    send_mail(acc1, acc2)
 
-    assert not cc_alice.read_claim("bob_hair")
+    cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
+    cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, acc2))
 
-    cc_alice.add_claim(
-        claim=("bob_hair", "black")
-    )
-    cc_alice.commit_to_chain()
-    assert cc_alice.read_claim("bob_hair")
+    data = cc2.read_claim(acc2.addr, chain=cc1)
+    assert data['key'] == bytes2ascii(ac2.keydata)
+    assert data['root_hash'] == cc2.head_imprint
+    assert data['store_url'] == cc2.store._dir
 
-    cc_alice.register_peer('bob', cc_bob.head_imprint, '', pk=bob_pk)
-    cc_alice.add_claim(claim=("bob_feet", "4"))
-    cc_alice.share_claims(["bob_feet"], reader='bob')
-    cc_alice.commit_to_chain()
-    assert cc_alice.read_claim("bob_feet")
-    assert cc_bob.read_claim("bob_feet", chain=cc_alice)
-    assert not cc_bob.read_claim("bob_hair", chain=cc_alice)
+
+def test_gossip_claims(account_maker):
+    acc1, acc2, acc3 = account_maker(), account_maker(), account_maker()
+    send_mail(acc1, acc2)
+    send_mail(acc1, acc3)
+
+    cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
+    cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, acc1))
+    cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
+
+    data = cc2.read_claim(acc3.addr, chain=cc1)
+    assert data['key'] == bytes2ascii(ac3.keydata)
+
+
+def test_reply_to_gossip_claims(account_maker):
+    acc1, acc2, acc3 = account_maker(), account_maker(), account_maker()
+    send_mail(acc1, acc2)
+    send_mail(acc1, acc3)
+    send_encrypted_mail(acc3, acc1)
+
+    cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
+    cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
+    cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, [acc1, acc2]))
+
+    data = cc2.read_claim(acc2.addr, chain=cc3)
+    assert data['key'] == bytes2ascii(ac2.keydata)
+    assert data['root_hash'] == cc2.head_imprint
+
+
+def test_ac_gossip_works(account_maker):
+    acc1, acc2, acc3 = account_maker(), account_maker(), account_maker()
+    send_mail(acc3, acc1)
+    send_mail(acc2, acc1)
+    send_encrypted_mail(acc1, [acc2, acc3])
+    send_encrypted_mail(acc3, [acc1, acc2])
+
+
+# send a mail from acc1 with autocrypt key to acc2
+def send_mail(acc1, acc2):
+    msg = gen_ac_mail_msg(acc1, acc2)
+    acc2.process_incoming(msg)
+    return msg
+
+
+def send_encrypted_mail(sender, recipients):
+    """Send an encrypted mail from sender to recipients
+       Decrypt and process it.
+       Returns the result of processing the Autocrypt header
+       and the decryption result.
+    """
+    if isinstance(recipients, Account):
+        recipients = [recipients]
+    msg = gen_ac_mail_msg(sender, recipients, payload="hello", charset="utf8")
+    enc_msg = sender.encrypt_mime(msg, [r.addr for r in recipients]).enc_msg
+    for rec in recipients:
+        processed = rec.process_incoming(enc_msg)
+        decrypted = rec.decrypt_mime(enc_msg)
+    return processed, decrypted
+
+
+def get_cc_and_ac(pair):
+    """
+       Claimchain Account corresponding to the CC headers
+       and the processed autocrypt header
+    """
+    processed, decrypted = pair
+    return get_cc_account(decrypted.dec_msg['ChainStore']), processed.pah
+
+
+def get_cc_account(store_dir):
+    """ Retrieve a ClaimChain account based from the give store_dir.
+    """
+    assert os.path.exists(store_dir)
+    store = FileStore(store_dir)
+    cc_dir = os.path.join(store_dir, '..')
+    assert os.path.exists(cc_dir)
+    return CCAccount(cc_dir, store)
