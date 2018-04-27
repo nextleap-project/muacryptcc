@@ -7,7 +7,6 @@ from test_muacrypt.test_account import gen_ac_mail_msg
 from muacrypt.account import Account
 from muacryptcc.plugin import CCAccount
 from muacryptcc.filestore import FileStore
-from claimchain.utils import bytes2ascii
 
 
 def test_no_claim_headers_in_cleartext_mail(account_maker):
@@ -35,10 +34,9 @@ def test_claims_contain_keys_and_cc_reference(account_maker):
     cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, acc2))
 
-    data = cc2.read_claim(acc2.addr, chain=cc1)
-    assert data['key'] == bytes2ascii(ac2.keydata)
-    assert data['root_hash'] == cc2.head_imprint
-    assert data['store_url'] == cc2.store._dir
+    cc2.verify_claim(cc1, acc2.addr, ac2.keydata,
+                     store_url=cc2.store._dir,
+                     root_hash=cc2.head_imprint)
 
 
 def test_gossip_claims(account_maker):
@@ -50,8 +48,7 @@ def test_gossip_claims(account_maker):
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
 
-    data = cc2.read_claim(acc3.addr, chain=cc1)
-    assert data['key'] == bytes2ascii(ac3.keydata)
+    cc2.verify_claim(cc1, acc3.addr, ac3.keydata)
 
 
 def test_reply_to_gossip_claims(account_maker):
@@ -64,9 +61,8 @@ def test_reply_to_gossip_claims(account_maker):
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, [acc1, acc2]))
 
-    data = cc2.read_claim(acc2.addr, chain=cc3)
-    assert data['key'] == bytes2ascii(ac2.keydata)
-    assert data['root_hash'] == cc2.head_imprint
+    cc2.verify_claim(cc2, acc2.addr, ac2.keydata,
+                     root_hash=cc2.head_imprint)
 
 
 def test_ac_gossip_works(account_maker):

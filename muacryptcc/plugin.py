@@ -46,7 +46,7 @@ class CCAccount(object):
         recipients = get_target_emailadr(dec_msg)
         for addr in recipients:
             pagh = addr2pagh[addr]
-            self.verify_claim(peers_chain, addr, bytes2ascii(pagh.keydata))
+            self.verify_claim(peers_chain, addr, pagh.keydata)
             self.register_peer_from_gossip(peers_chain, addr)
 
     @hookimpl
@@ -122,10 +122,16 @@ class CCAccount(object):
         store = FileStore(store_url)
         return Chain(store, root_hash=ascii2bytes(root_hash))
 
-    def verify_claim(self, chain, addr, keydata):
-        value = self.read_claim(addr, chain=chain)
-        if value:
-            assert value['key'] == keydata
+    def verify_claim(self, chain, addr, keydata, store_url='',
+                     root_hash=''):
+        autocrypt_key = bytes2ascii(keydata)
+        claim = self.read_claim(addr, chain=chain)
+        if claim:
+            assert claim['autocrypt_key'] == autocrypt_key
+            if store_url:
+                assert claim['store_url'] == store_url
+            if root_hash:
+                assert claim['root_hash'] == root_hash
 
     def register_peer_from_gossip(self, chain, addr):
         value = self.read_claim(addr, chain=chain)
@@ -135,7 +141,7 @@ class CCAccount(object):
     def claim_about(self, addr, keydata):
         info = self.addr2cc_info.get(addr) or {}
         content = dict(
-            key=bytes2ascii(keydata),
+            autocrypt_key=bytes2ascii(keydata),
             store_url=info.get("store_url"),
             root_hash=info.get("root_hash")
         )
