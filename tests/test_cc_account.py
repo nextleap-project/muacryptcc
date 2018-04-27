@@ -35,7 +35,6 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
 def test_add_claim_with_access_control(make_account):
     cc_alice = make_account("alice")
     cc_bob = make_account("bo")
-    bob_pk = cc_bob.get_public_key()
 
     assert not cc_alice.read_claim("bob_hair")
 
@@ -45,7 +44,7 @@ def test_add_claim_with_access_control(make_account):
     cc_alice.commit_to_chain()
     assert cc_alice.read_claim("bob_hair")
 
-    cc_alice.register_peer('bob', cc_bob.head_imprint, '', pk=bob_pk)
+    cc_alice.register_peer('bob', cc_bob.head_imprint, '', chain=cc_bob)
     cc_alice.add_claim(claim=("bob_feet", "4"))
     cc_alice.share_claims(["bob_feet"], reader='bob')
     cc_alice.commit_to_chain()

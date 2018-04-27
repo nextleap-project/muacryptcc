@@ -91,12 +91,6 @@ class CCAccount(object):
                 # TODO: load state from last block
                 self.state = State()
 
-    def get_public_key(self):
-        return self.params.dh.pk
-        # chain = self._get_current_chain()
-        # with self.params.as_default():
-        #     return View(chain).params.dh.pk
-
     def head():
         def fget(self):
             try:
@@ -115,13 +109,13 @@ class CCAccount(object):
     def head_imprint(self):
         return bytes2ascii(self.head)
 
-    def register_peer(self, addr, root_hash, store_url, pk=None):
-        if not pk:
+    def register_peer(self, addr, root_hash, store_url, chain=None):
+        if not chain:
             store = FileStore(store_url)
             chain = Chain(store, root_hash=ascii2bytes(root_hash))
-            assert chain
-            view = View(chain)
-            pk = view.params.dh.pk
+        assert chain
+        view = View(chain)
+        pk = view.params.dh.pk
         assert pk
         self.addr2cc_info[addr] = dict(
             root_hash=root_hash,
@@ -159,8 +153,6 @@ class CCAccount(object):
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
-        with self.params.as_default():
-            self.state.grant_access(self.get_public_key(), [key])
 
     def can_share_with(self, peer):
         reader_info = self.addr2cc_info.get(peer) or {}
