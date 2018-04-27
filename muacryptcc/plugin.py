@@ -46,12 +46,8 @@ class CCAccount(object):
         recipients = get_target_emailadr(dec_msg)
         for addr in recipients:
             pagh = addr2pagh[addr]
-            value = self.read_claim(addr, chain=peers_chain)
-            if value:
-                assert value['key'] == bytes2ascii(pagh.keydata)
-                # TODO: check for existing entries
-                if value['store_url']:
-                    self.register_peer(addr, value['root_hash'], value['store_url'])
+            self.verify_claim(peers_chain, addr, bytes2ascii(pagh.keydata))
+            self.register_peer_from_gossip(peers_chain, addr)
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -109,6 +105,7 @@ class CCAccount(object):
         return bytes2ascii(self.head)
 
     def register_peer(self, addr, root_hash, store_url, chain=None):
+        # TODO: check for existing entries
         if not chain:
             chain = self.get_chain(store_url, root_hash)
         assert chain
@@ -124,6 +121,16 @@ class CCAccount(object):
     def get_chain(self, store_url, root_hash):
         store = FileStore(store_url)
         return Chain(store, root_hash=ascii2bytes(root_hash))
+
+    def verify_claim(self, chain, addr, keydata):
+        value = self.read_claim(addr, chain=chain)
+        if value:
+            assert value['key'] == keydata
+
+    def register_peer_from_gossip(self, chain, addr):
+        value = self.read_claim(addr, chain=chain)
+        if value and value['store_url']:
+            self.register_peer(addr, value['root_hash'], value['store_url'])
 
     def claim_about(self, addr, keydata):
         info = self.addr2cc_info.get(addr) or {}

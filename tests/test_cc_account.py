@@ -26,8 +26,6 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
     cc2 = make_account("alice", store=cc1.store)
 
     assert cc1.params.private_export() == cc2.params.private_export()
-    assert cc1.params.vrf.sk
-    assert cc1.params.vrf.sk == cc1.params.vrf.sk
     assert cc1.head
     assert cc1.head == cc2.head
 
