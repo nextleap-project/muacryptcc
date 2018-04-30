@@ -42,17 +42,12 @@ class CCAccount(object):
         store_url = dec_msg["ChainStore"]
         self.register_peer(sender_addr, root_hash, store_url)
 
-        store = FileStore(store_url)
-        peers_chain = Chain(store, root_hash=ascii2bytes(root_hash))
+        peers_chain = self.get_chain(store_url, root_hash)
         recipients = get_target_emailadr(dec_msg)
         for addr in recipients:
             pagh = addr2pagh[addr]
-            value = self.read_claim(addr, chain=peers_chain)
-            if value:
-                assert value['key'] == bytes2ascii(pagh.keydata)
-                # TODO: check for existing entries
-                if value['store_url']:
-                    self.register_peer(addr, value['root_hash'], value['store_url'])
+            self.verify_claim(peers_chain, addr, pagh.keydata)
+            self.register_peer_from_gossip(peers_chain, addr)
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -91,12 +86,6 @@ class CCAccount(object):
                 # TODO: load state from last block
                 self.state = State()
 
-    def get_public_key(self):
-        return self.params.dh.pk
-        # chain = self._get_current_chain()
-        # with self.params.as_default():
-        #     return View(chain).params.dh.pk
-
     def head():
         def fget(self):
             try:
@@ -115,13 +104,13 @@ class CCAccount(object):
     def head_imprint(self):
         return bytes2ascii(self.head)
 
-    def register_peer(self, addr, root_hash, store_url, pk=None):
-        if not pk:
-            store = FileStore(store_url)
-            chain = Chain(store, root_hash=ascii2bytes(root_hash))
-            assert chain
-            view = View(chain)
-            pk = view.params.dh.pk
+    def register_peer(self, addr, root_hash, store_url, chain=None):
+        # TODO: check for existing entries
+        if not chain:
+            chain = self.get_chain(store_url, root_hash)
+        assert chain
+        view = View(chain)
+        pk = view.params.dh.pk
         assert pk
         self.addr2cc_info[addr] = dict(
             root_hash=root_hash,
@@ -129,10 +118,30 @@ class CCAccount(object):
             public_key=pk
         )
 
+    def get_chain(self, store_url, root_hash):
+        store = FileStore(store_url)
+        return Chain(store, root_hash=ascii2bytes(root_hash))
+
+    def verify_claim(self, chain, addr, keydata, store_url='',
+                     root_hash=''):
+        autocrypt_key = bytes2ascii(keydata)
+        claim = self.read_claim(addr, chain=chain)
+        if claim:
+            assert claim['autocrypt_key'] == autocrypt_key
+            if store_url:
+                assert claim['store_url'] == store_url
+            if root_hash:
+                assert claim['root_hash'] == root_hash
+
+    def register_peer_from_gossip(self, chain, addr):
+        value = self.read_claim(addr, chain=chain)
+        if value and value['store_url']:
+            self.register_peer(addr, value['root_hash'], value['store_url'])
+
     def claim_about(self, addr, keydata):
         info = self.addr2cc_info.get(addr) or {}
         content = dict(
-            key=bytes2ascii(keydata),
+            autocrypt_key=bytes2ascii(keydata),
             store_url=info.get("store_url"),
             root_hash=info.get("root_hash")
         )
@@ -159,8 +168,6 @@ class CCAccount(object):
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
-        with self.params.as_default():
-            self.state.grant_access(self.get_public_key(), [key])
 
     def can_share_with(self, peer):
         reader_info = self.addr2cc_info.get(peer) or {}
