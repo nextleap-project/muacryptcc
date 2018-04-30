@@ -6,9 +6,9 @@ defaultcontext==1.0.3
 docutils==0.14
 funcsigs==1.0.2
 future==0.16.0
--e git+https://github.com/hpk42/rousseau-chain@fix_block#egg=hippiehug&subdirectory=hippiehug-package
--e git+https://github.com/hpk42/claimchain-core@master#egg=claimchain
 -e git+https://github.com/hpk42/muacrypt@master#egg=muacrypt
+-e git+https://github.com/claimchain/claimchain-core@master#egg=claimchain
+-e git+https://github.com/gdanezis/rousseau-chain@eb0bf275eba288e9af1cbbbaa3ef8e63e6b63d0b#egg=hippiehug&subdirectory=hippiehug-package
 msgpack-python==0.5.4
 petlib==0.0.43
 pluggy==0.6.0
