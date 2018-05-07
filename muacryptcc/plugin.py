@@ -10,17 +10,31 @@ from claimchain.crypto.params import LocalParams
 from claimchain.utils import pet2ascii, bytes2ascii, ascii2bytes
 from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
+from .commands import cc_status, cc_sync
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
 
 
 @hookimpl
+def add_subcommands(command_group):
+    command_group.add_command(cc_status)
+    command_group.add_command(cc_sync)
+
+
+@hookimpl
 def instantiate_account(plugin_manager, basedir):
-    cc_dir = os.path.join(basedir, "muacryptcc")
-    store_dir = os.path.join(cc_dir, "store")
-    store = FileStore(store_dir)
-    cc_account = CCAccount(cc_dir, store)
-    plugin_manager.register(cc_account)
+    basename = os.path.basename(basedir)
+    plugin_name = "ccaccount-" + basename
+    p = plugin_manager.get_plugin(name=plugin_name)
+
+    # avoid double-registration, the previous one should have been
+    # already good
+    if p is None:
+        cc_dir = os.path.join(basedir, "muacryptcc")
+        store_dir = os.path.join(cc_dir, "store")
+        store = FileStore(store_dir)
+        cc_account = CCAccount(cc_dir, store)
+        plugin_manager.register(cc_account, name=plugin_name)
 
 
 class CCAccount(object):
@@ -113,7 +127,8 @@ class CCAccount(object):
 
     @property
     def head_imprint(self):
-        return bytes2ascii(self.head)
+        if self.head:
+            return bytes2ascii(self.head)
 
     def register_peer(self, addr, root_hash, store_url, pk=None):
         if not pk:
