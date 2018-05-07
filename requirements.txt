@@ -8,7 +8,7 @@ funcsigs==1.0.2
 future==0.16.0
 -e git+https://github.com/hpk42/rousseau-chain@fix_block#egg=hippiehug&subdirectory=hippiehug-package
 -e git+https://github.com/hpk42/claimchain-core@master#egg=claimchain
--e git+https://github.com/hpk42/muacrypt@master#egg=muacrypt
+-e git+https://github.com/hpk42/muacrypt@new_sub#egg=muacrypt
 msgpack-python==0.5.4
 petlib==0.0.43
 pluggy==0.6.0
