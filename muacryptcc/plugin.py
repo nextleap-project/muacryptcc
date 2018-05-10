@@ -61,7 +61,10 @@ class CCAccount(object):
         for addr in recipients:
             pagh = addr2pagh[addr]
             self.verify_claim(peers_chain, addr, pagh.keydata)
-            self.register_peer_from_gossip(peers_chain, addr)
+            value = self.read_claim(addr, chain=peers_chain)
+            if value and value['store_url']:
+                self.register_peer(addr, value['root_hash'], value['store_url'])
+
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -134,11 +137,6 @@ class CCAccount(object):
                 assert claim['store_url'] == store_url
             if root_hash:
                 assert claim['root_hash'] == root_hash
-
-    def register_peer_from_gossip(self, chain, addr):
-        value = self.read_claim(addr, chain=chain)
-        if value and value['store_url']:
-            self.register_peer(addr, value['root_hash'], value['store_url'])
 
     def claim_about(self, addr, keydata):
         info = self.get_peer(addr)
