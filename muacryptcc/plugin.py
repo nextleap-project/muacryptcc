@@ -7,7 +7,7 @@ import pluggy
 from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
-from claimchain.utils import pet2ascii, bytes2ascii, ascii2bytes
+from claimchain.utils import pet2ascii, ascii2pet, bytes2ascii, ascii2bytes
 from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
 from .commands import cc_status, cc_sync
@@ -43,7 +43,6 @@ class CCAccount(object):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
-        self._addr2cc_info = {}
         self.store = store
         self.init_crypto_identity()
 
@@ -128,14 +127,12 @@ class CCAccount(object):
         view = View(chain)
         pk = view.params.dh.pk
         assert pk
-        self._addr2cc_info[addr] = dict(
+        self._peer_info[addr] = dict(
             root_hash=root_hash,
             store_url=store_url,
-            public_key=pk
+            public_key=pet2ascii(pk)
         )
-
-    def get_peer(self, addr):
-        return self._addr2cc_info.get(addr) or {}
+        self._persist_peer_info()
 
     def get_chain(self, store_url, root_hash):
         store = FileStore(store_url)
@@ -195,10 +192,29 @@ class CCAccount(object):
     def share_claims(self, claim_keys, reader):
         claim_keys = [key.encode('utf-8') for key in claim_keys]
         reader_info = self.get_peer(reader)
-        pk = reader_info.get("public_key")
+        pk = ascii2pet(reader_info.get("public_key"))
         assert pk
         with self.params.as_default():
             self.state.grant_access(pk, claim_keys)
 
+    def get_peer(self, addr):
+        return self._peer_info.get(addr) or {}
+
     def _get_current_chain(self):
         return Chain(self.store, root_hash=self.head)
+
+    def _persist_peer_info(self):
+        with open(os.path.join(self.accountdir, 'peers.json'), 'w') as fp:
+            json.dump(self._cached_peer_info, fp)
+
+    @property
+    def _peer_info(self):
+        try:
+            return self._cached_peer_info
+        except AttributeError:
+            try:
+                with open(os.path.join(self.accountdir, 'peers.json'), 'r') as fp:
+                    self._cached_peer_info = json.load(fp)
+            except IOError:
+                self._cached_peer_info = {}
+            return self._cached_peer_info

@@ -30,7 +30,6 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
     assert cc1.head == cc2.head
 
 
-@pytest.mark.xfail
 def test_account_will_persist_peer_registry(make_account):
     alice = make_account('alice')
     bob = make_account('bob')
