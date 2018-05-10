@@ -35,8 +35,9 @@ def test_account_will_persist_peer_registry(make_account):
     bob = make_account('bob')
     alice.register_peer('bob', bob.head_imprint, 'url', bob.chain)
     from_disk = make_account("alice", store=alice.store)
-    assert from_disk.get_peer('bob')
-    assert from_disk.get_peer('bob') == alice.get_peer('bob')
+    assert alice.read_claim('bob')
+    assert from_disk.read_claim('bob')
+    assert from_disk.read_claim('bob') == alice.read_claim('bob')
 
 
 def test_add_claim_with_access_control(make_account):

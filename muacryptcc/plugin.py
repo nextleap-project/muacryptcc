@@ -62,9 +62,8 @@ class CCAccount(object):
             pagh = addr2pagh[addr]
             self.verify_claim(peers_chain, addr, pagh.keydata)
             value = self.read_claim(addr, chain=peers_chain)
-            if value and value['store_url']:
+            if value and value.get('store_url'):
                 self.register_peer(addr, value['root_hash'], value['store_url'])
-
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -100,8 +99,7 @@ class CCAccount(object):
             with open(identity_file, 'r') as fp:
                 params_raw = json.load(fp)
                 self.params = LocalParams.from_dict(params_raw)
-                # TODO: load state from last block
-                self.state = State()
+            self._load_state()
 
     @property
     def head_imprint(self):
@@ -116,12 +114,11 @@ class CCAccount(object):
         view = View(chain)
         pk = view.params.dh.pk
         assert pk
-        self._peer_info[addr] = dict(
+        self.add_claim((addr, dict(
             root_hash=root_hash,
             store_url=store_url,
             public_key=pet2ascii(pk)
-        )
-        self._persist_peer_info()
+        )))
 
     def get_chain(self, store_url, root_hash):
         store = FileStore(store_url)
@@ -139,13 +136,9 @@ class CCAccount(object):
                 assert claim['root_hash'] == root_hash
 
     def claim_about(self, addr, keydata):
-        info = self.get_peer(addr)
-        content = dict(
-            autocrypt_key=bytes2ascii(keydata),
-            store_url=info.get("store_url"),
-            root_hash=info.get("root_hash")
-        )
-        return (addr, content)
+        info = self.read_claim(addr) or {}
+        info['autocrypt_key'] = bytes2ascii(keydata)
+        return (addr, info)
 
     def commit_to_chain(self):
         with self.params.as_default():
@@ -153,7 +146,11 @@ class CCAccount(object):
 
     def read_claim(self, claimkey, chain=None):
         if chain is None:
-            chain = self.chain
+            try:
+                value = self.state[claimkey.encode('utf-8')]
+                return json.loads(value.decode('utf-8'))
+            except KeyError:
+                chain = self.chain
         try:
             with self.params.as_default():
                 value = View(chain)[claimkey.encode('utf-8')]
@@ -167,21 +164,19 @@ class CCAccount(object):
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
+        self._persist_state()
 
     def can_share_with(self, peer):
-        reader_info = self.get_peer(peer)
+        reader_info = self.read_claim(peer) or {}
         return bool(reader_info.get('public_key'))
 
     def share_claims(self, claim_keys, reader):
         claim_keys = [key.encode('utf-8') for key in claim_keys]
-        reader_info = self.get_peer(reader)
+        reader_info = self.read_claim(reader) or {}
         pk = ascii2pet(reader_info.get("public_key"))
         assert pk
         with self.params.as_default():
             self.state.grant_access(pk, claim_keys)
-
-    def get_peer(self, addr):
-        return self._peer_info.get(addr) or {}
 
     @property
     def chain(self):
@@ -201,18 +196,15 @@ class CCAccount(object):
         return property(fget, fset)
     _head = _head()
 
-    def _persist_peer_info(self):
-        with open(os.path.join(self.accountdir, 'peers.json'), 'w') as fp:
-            json.dump(self._cached_peer_info, fp)
+    def _persist_state(self):
+        with open(os.path.join(self.accountdir, 'state.json'), 'w') as fp:
+            json.dump(self.state._claim_content_by_label, fp)
 
-    @property
-    def _peer_info(self):
+    def _load_state(self):
+        self.state = State()
         try:
-            return self._cached_peer_info
-        except AttributeError:
-            try:
-                with open(os.path.join(self.accountdir, 'peers.json'), 'r') as fp:
-                    self._cached_peer_info = json.load(fp)
-            except IOError:
-                self._cached_peer_info = {}
-            return self._cached_peer_info
+            with open(os.path.join(self.accountdir, 'state.json'), 'r') as fp:
+                for k, v in json.load(fp).items():
+                    self.state[k] = v
+        except IOError:
+            pass
