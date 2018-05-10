@@ -88,9 +88,9 @@ class CCAccount(object):
             self.params = LocalParams.generate()
             self.state = State()
             self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.dh.pk)
-            assert self.head is None
+            assert self.head_imprint is None
             self.commit_to_chain()
-            assert self.head
+            assert self.head_imprint
             with open(identity_file, 'w') as fp:
                 json.dump(self.params.private_export(), fp)
         else:
@@ -100,24 +100,10 @@ class CCAccount(object):
                 # TODO: load state from last block
                 self.state = State()
 
-    def head():
-        def fget(self):
-            try:
-                with open(os.path.join(self.accountdir, 'head'), 'rb') as fp:
-                    return fp.read()
-            except IOError:
-                return None
-
-        def fset(self, val):
-            with open(os.path.join(self.accountdir, 'head'), 'wb') as fp:
-                fp.write(val)
-        return property(fget, fset)
-    head = head()
-
     @property
     def head_imprint(self):
-        if self.head:
-            return bytes2ascii(self.head)
+        if self._head:
+            return bytes2ascii(self._head)
 
     def register_peer(self, addr, root_hash, store_url, chain=None):
         # TODO: check for existing entries
@@ -164,13 +150,12 @@ class CCAccount(object):
         return (addr, content)
 
     def commit_to_chain(self):
-        chain = self._get_current_chain()
         with self.params.as_default():
-            self.head = self.state.commit(chain)
+            self._head = self.state.commit(self.chain)
 
     def read_claim(self, claimkey, chain=None):
         if chain is None:
-            chain = self._get_current_chain()
+            chain = self.chain
         try:
             with self.params.as_default():
                 value = View(chain)[claimkey.encode('utf-8')]
@@ -200,8 +185,23 @@ class CCAccount(object):
     def get_peer(self, addr):
         return self._peer_info.get(addr) or {}
 
-    def _get_current_chain(self):
-        return Chain(self.store, root_hash=self.head)
+    @property
+    def chain(self):
+        return Chain(self.store, root_hash=self._head)
+
+    def _head():
+        def fget(self):
+            try:
+                with open(os.path.join(self.accountdir, 'head'), 'rb') as fp:
+                    return fp.read()
+            except IOError:
+                return None
+
+        def fset(self, val):
+            with open(os.path.join(self.accountdir, 'head'), 'wb') as fp:
+                fp.write(val)
+        return property(fget, fset)
+    _head = _head()
 
     def _persist_peer_info(self):
         with open(os.path.join(self.accountdir, 'peers.json'), 'w') as fp:
