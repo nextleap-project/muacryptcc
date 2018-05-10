@@ -30,6 +30,17 @@ def test_account_can_be_propertly_instanted_from_store(make_account):
     assert cc1.head == cc2.head
 
 
+@pytest.mark.xfail
+def test_account_will_persist_peer_registry(make_account):
+    alice = make_account('alice')
+    bob = make_account('bob')
+    alice.register_peer('bob', bob.head_imprint, 'url', bob._get_current_chain())
+    from_disk = make_account("alice", store=alice.store)
+    assert alice.get_peer('bob')
+    assert from_disk.get_peer('bob')
+    assert from_disk._addr2cc_info == alice._addr2cc_info
+
+
 def test_add_claim_with_access_control(make_account):
     cc_alice = make_account("alice")
     cc_bob = make_account("bo")

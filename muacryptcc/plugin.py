@@ -43,7 +43,7 @@ class CCAccount(object):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
-        self.addr2cc_info = {}
+        self._addr2cc_info = {}
         self.store = store
         self.init_crypto_identity()
 
@@ -128,11 +128,14 @@ class CCAccount(object):
         view = View(chain)
         pk = view.params.dh.pk
         assert pk
-        self.addr2cc_info[addr] = dict(
+        self._addr2cc_info[addr] = dict(
             root_hash=root_hash,
             store_url=store_url,
             public_key=pk
         )
+
+    def get_peer(self, addr):
+        return self._addr2cc_info.get(addr) or {}
 
     def get_chain(self, store_url, root_hash):
         store = FileStore(store_url)
@@ -155,7 +158,7 @@ class CCAccount(object):
             self.register_peer(addr, value['root_hash'], value['store_url'])
 
     def claim_about(self, addr, keydata):
-        info = self.addr2cc_info.get(addr) or {}
+        info = self.get_peer(addr)
         content = dict(
             autocrypt_key=bytes2ascii(keydata),
             store_url=info.get("store_url"),
@@ -186,12 +189,12 @@ class CCAccount(object):
         self.state[key] = value
 
     def can_share_with(self, peer):
-        reader_info = self.addr2cc_info.get(peer) or {}
+        reader_info = self.get_peer(peer)
         return bool(reader_info.get('public_key'))
 
     def share_claims(self, claim_keys, reader):
         claim_keys = [key.encode('utf-8') for key in claim_keys]
-        reader_info = self.addr2cc_info.get(reader) or {}
+        reader_info = self.get_peer(reader)
         pk = reader_info.get("public_key")
         assert pk
         with self.params.as_default():
