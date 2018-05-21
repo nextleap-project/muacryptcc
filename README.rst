@@ -4,6 +4,8 @@ muacrypt ClaimChains plugin
 MuacryptCC provides consistency checks
 for keys observed in Autocrypt gossip
 to support privacy-preserving decentralized key distribution.
+The underlying concept is descript in
+`Key consistency with ClaimChains <https://countermitm.readthedocs.io/en/latest/claimchains.html>`_.
 
 It's build on top of `ClaimChain <https://claimchain.github.io/>`_.
 These hash chains store claims about public keys
