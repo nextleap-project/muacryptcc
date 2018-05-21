@@ -64,3 +64,13 @@ with both directories installed in edit mode::
 Changes you subsequently make to the sources
 will be available without further installing the packages again.
 
+Next Steps
+----------
+
+We envision the following next steps
+to make MuacryptCC check the consistency guarantees
+between peer chains:
+
+- online block store to allow remote access to peers chains.
+- subcommand to list conflicts in chains retrieved so far.
+- subcommand to display ordered list of recommended key verifications.

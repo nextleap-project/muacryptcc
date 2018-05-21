@@ -56,12 +56,3 @@ incorporates all fixes.
 We rely on hooks provided by Muacrypt version 0.8.0.
 MuacryptCC will not be able to register commands with previous versions.
 
-Next Steps:
-
-We envision the following next steps
-to make MuacryptCC check the consistency guarantees
-between peer chains:
-
-- online block store to allow remote access to peers chains.
-- subcommand to list conflicts in chains retrieved so far.
-- subcommand to display ordered list of recommended key verifications.
