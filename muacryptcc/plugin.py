@@ -7,7 +7,7 @@ import pluggy
 from hippiehug import Chain
 from claimchain import State, View
 from claimchain.crypto.params import LocalParams
-from claimchain.utils import pet2ascii, bytes2ascii, ascii2bytes
+from claimchain.utils import pet2ascii, ascii2pet, bytes2ascii, ascii2bytes
 from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
 from .commands import cc_status, cc_sync
@@ -43,7 +43,6 @@ class CCAccount(object):
         self.accountdir = accountdir
         if not os.path.exists(accountdir):
             os.makedirs(accountdir)
-        self.addr2cc_info = {}
         self.store = store
         self.init_crypto_identity()
 
@@ -62,7 +61,9 @@ class CCAccount(object):
         for addr in recipients:
             pagh = addr2pagh[addr]
             self.verify_claim(peers_chain, addr, pagh.keydata)
-            self.register_peer_from_gossip(peers_chain, addr)
+            value = self.read_claim(addr, chain=peers_chain)
+            if value and value.get('store_url'):
+                self.register_peer(addr, value['root_hash'], value['store_url'])
 
     @hookimpl
     def process_before_encryption(self, sender_addr, sender_keyhandle,
@@ -89,36 +90,21 @@ class CCAccount(object):
             self.params = LocalParams.generate()
             self.state = State()
             self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.dh.pk)
-            assert self.head is None
+            assert self.head_imprint is None
             self.commit_to_chain()
-            assert self.head
+            assert self.head_imprint
             with open(identity_file, 'w') as fp:
                 json.dump(self.params.private_export(), fp)
         else:
             with open(identity_file, 'r') as fp:
                 params_raw = json.load(fp)
                 self.params = LocalParams.from_dict(params_raw)
-                # TODO: load state from last block
-                self.state = State()
-
-    def head():
-        def fget(self):
-            try:
-                with open(os.path.join(self.accountdir, 'head'), 'rb') as fp:
-                    return fp.read()
-            except IOError:
-                return None
-
-        def fset(self, val):
-            with open(os.path.join(self.accountdir, 'head'), 'wb') as fp:
-                fp.write(val)
-        return property(fget, fset)
-    head = head()
+            self._load_state()
 
     @property
     def head_imprint(self):
-        if self.head:
-            return bytes2ascii(self.head)
+        if self._head:
+            return bytes2ascii(self._head)
 
     def register_peer(self, addr, root_hash, store_url, chain=None):
         # TODO: check for existing entries
@@ -128,11 +114,11 @@ class CCAccount(object):
         view = View(chain)
         pk = view.params.dh.pk
         assert pk
-        self.addr2cc_info[addr] = dict(
+        self.add_claim((addr, dict(
             root_hash=root_hash,
             store_url=store_url,
-            public_key=pk
-        )
+            public_key=pet2ascii(pk)
+        )))
 
     def get_chain(self, store_url, root_hash):
         store = FileStore(store_url)
@@ -149,28 +135,22 @@ class CCAccount(object):
             if root_hash:
                 assert claim['root_hash'] == root_hash
 
-    def register_peer_from_gossip(self, chain, addr):
-        value = self.read_claim(addr, chain=chain)
-        if value and value['store_url']:
-            self.register_peer(addr, value['root_hash'], value['store_url'])
-
     def claim_about(self, addr, keydata):
-        info = self.addr2cc_info.get(addr) or {}
-        content = dict(
-            autocrypt_key=bytes2ascii(keydata),
-            store_url=info.get("store_url"),
-            root_hash=info.get("root_hash")
-        )
-        return (addr, content)
+        info = self.read_claim(addr) or {}
+        info['autocrypt_key'] = bytes2ascii(keydata)
+        return (addr, info)
 
     def commit_to_chain(self):
-        chain = self._get_current_chain()
         with self.params.as_default():
-            self.head = self.state.commit(chain)
+            self._head = self.state.commit(self.chain)
 
     def read_claim(self, claimkey, chain=None):
         if chain is None:
-            chain = self._get_current_chain()
+            try:
+                value = self.state[claimkey.encode('utf-8')]
+                return json.loads(value.decode('utf-8'))
+            except KeyError:
+                chain = self.chain
         try:
             with self.params.as_default():
                 value = View(chain)[claimkey.encode('utf-8')]
@@ -184,18 +164,47 @@ class CCAccount(object):
         assert isinstance(key, bytes)
         assert isinstance(value, bytes)
         self.state[key] = value
+        self._persist_state()
 
     def can_share_with(self, peer):
-        reader_info = self.addr2cc_info.get(peer) or {}
+        reader_info = self.read_claim(peer) or {}
         return bool(reader_info.get('public_key'))
 
     def share_claims(self, claim_keys, reader):
         claim_keys = [key.encode('utf-8') for key in claim_keys]
-        reader_info = self.addr2cc_info.get(reader) or {}
-        pk = reader_info.get("public_key")
+        reader_info = self.read_claim(reader) or {}
+        pk = ascii2pet(reader_info.get("public_key"))
         assert pk
         with self.params.as_default():
             self.state.grant_access(pk, claim_keys)
 
-    def _get_current_chain(self):
-        return Chain(self.store, root_hash=self.head)
+    @property
+    def chain(self):
+        return Chain(self.store, root_hash=self._head)
+
+    def _head():
+        def fget(self):
+            try:
+                with open(os.path.join(self.accountdir, 'head'), 'rb') as fp:
+                    return fp.read()
+            except IOError:
+                return None
+
+        def fset(self, val):
+            with open(os.path.join(self.accountdir, 'head'), 'wb') as fp:
+                fp.write(val)
+        return property(fget, fset)
+    _head = _head()
+
+    def _persist_state(self):
+        with open(os.path.join(self.accountdir, 'state.json'), 'w') as fp:
+            json.dump(self.state._claim_content_by_label, fp)
+
+    def _load_state(self):
+        self.state = State()
+        try:
+            with open(os.path.join(self.accountdir, 'state.json'), 'r') as fp:
+                for k, v in json.load(fp).items():
+                    self.state[k] = v
+        except IOError:
+            pass

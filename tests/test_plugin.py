@@ -34,7 +34,7 @@ def test_claims_contain_keys_and_cc_reference(account_maker):
     cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, acc2))
 
-    cc2.verify_claim(cc1, acc2.addr, ac2.keydata,
+    cc2.verify_claim(cc1.chain, acc2.addr, ac2.keydata,
                      store_url=cc2.store._dir,
                      root_hash=cc2.head_imprint)
 
@@ -48,7 +48,7 @@ def test_gossip_claims(account_maker):
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, acc1))
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
 
-    cc2.verify_claim(cc1, acc3.addr, ac3.keydata)
+    cc2.verify_claim(cc1.chain, acc3.addr, ac3.keydata)
 
 
 def test_reply_to_gossip_claims(account_maker):
@@ -61,7 +61,7 @@ def test_reply_to_gossip_claims(account_maker):
     cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
     cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, [acc1, acc2]))
 
-    cc2.verify_claim(cc2, acc2.addr, ac2.keydata,
+    cc2.verify_claim(cc2.chain, acc2.addr, ac2.keydata,
                      root_hash=cc2.head_imprint)
 
 
