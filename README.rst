@@ -19,7 +19,7 @@ at message delivery and retrieval times.
 testing
 -------
 
-Please follow the `muacrypt <https://github.com/hpk42/muacrypt>`
+Please follow the `muacrypt <https://github.com/hpk42/muacrypt>`_
 instructions for testing first.
 
 Once muacrypts tests are passing
@@ -28,7 +28,7 @@ clone the muacryptcc repository into a separate folder.
 installing
 ----------
 
-Please install `muacrypt <https://github.com/hpk42/muacrypt>`
+Please install `muacrypt <https://github.com/hpk42/muacrypt>`_
 according to the instructions provided first.
 Then use pip to add the muacryptcc plugin::
 
