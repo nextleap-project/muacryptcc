@@ -5,7 +5,7 @@ MuacryptCC provides consistency checks
 for keys observed in Autocrypt gossip
 to support privacy-preserving decentralized key distribution.
 
-It's build on top of `ClaimChain<https://claimchain.github.io/>`_.
+It's build on top of `ClaimChain <https://claimchain.github.io/>`_.
 These hash chains store claims about public keys
 that people use and have observed.
 
@@ -17,7 +17,7 @@ at message delivery and retrieval times.
 testing
 -------
 
-Please follow the `muacrypt<https://github.com/hpk42/muacrypt>`
+Please follow the `muacrypt <https://github.com/hpk42/muacrypt>`
 instructions for testing first.
 
 Once muacrypts tests are passing
@@ -26,7 +26,7 @@ clone the muacryptcc repository into a separate folder.
 installing
 ----------
 
-Please install `muacrypt<https://github.com/hpk42/muacrypt>`
+Please install `muacrypt <https://github.com/hpk42/muacrypt>`
 according to the instructions provided first.
 Then use pip to add the muacryptcc plugin::
 
