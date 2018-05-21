@@ -54,6 +54,9 @@ class CCAccount(object):
         sender_addr = parse_email_addr(dec_msg["From"])
         root_hash = dec_msg["GossipClaims"]
         store_url = dec_msg["ChainStore"]
+        if not root_hash or not store_url:
+            # this peer has no CC support
+            return
         self.register_peer(sender_addr, root_hash, store_url)
 
         peers_chain = self.get_chain(store_url, root_hash)
