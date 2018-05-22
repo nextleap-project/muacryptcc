@@ -1,5 +1,5 @@
-0.8.0 - assert consistency
---------------------------
+0.8.0 - assert Autocrypt key consistency
+----------------------------------------
 
 Initial release.
 
