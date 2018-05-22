@@ -16,21 +16,6 @@ references to the chains of the sender and recipients.
 The chains themselves are uploaded to and retrieved from an online storage
 at message delivery and retrieval times.
 
-testing
--------
-
-Please follow the `muacrypt <https://github.com/hpk42/muacrypt>`_
-instructions for testing first.
-
-Once muacrypts tests are passing
-Clone the muacryptcc repository into a separate folder.
-You will need to retrieve the submodules::
-
-    $ git submodule update --init
-
-Afterwards you can run all tests::
-
-    $ tox
 
 installing
 ----------
@@ -44,15 +29,30 @@ You can confirm it was properly installed by running::
 
     $ muacrypt cc-status
 
+
+testing
+-------
+
+Please follow the `muacrypt <https://github.com/hpk42/muacrypt>`_
+instructions for testing first.
+
+Once muacrypts tests are passing
+Clone the muacryptcc repository into a separate folder::
+
+    $ git clone https://github.com/nextleap-project/muacryptcc
+
+Afterwards you can run all tests::
+
+    $ tox
+
 installation for development
 ++++++++++++++++++++++++++++
 
 If you plan to work/modify the sources
-you will first need a git clone and the submodules::
+you will first need a git clone::
 
     $ git clone git@github.com:nextleap-project/muacryptcc.git
     $ cd muacryptcc
-    $ git submodule update --init
 
 We strongly recommend to create
 and activate a python virtualenv
