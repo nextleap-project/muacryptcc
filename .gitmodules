@@ -1,0 +1,6 @@
+[submodule "rousseau-chain"]
+	path = rousseau-chain
+	url = git@github.com:gdanezis/rousseau-chain.git
+[submodule "claimchain-core"]
+	path = claimchain-core
+	url = git@github.com:claimchain/claimchain-core.git

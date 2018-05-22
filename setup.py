@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def main():
     with open(os.path.join("muacryptcc", "__init__.py")) as f:
@@ -27,16 +27,42 @@ def main():
                      'Topic :: Utilities',
                      'Intended Audience :: Developers',
                      'Programming Language :: Python'],
-        packages=['muacryptcc'],
+        packages=find_packages(),
         entry_points={
             "muacrypt": [
                 "muacryptcc=muacryptcc.plugin"
             ]
         },
-        install_requires=["base58", "muacrypt"],
+        install_requires=["muacrypt"] + claimchain_core_deps(),
         # install_requires=["claimchain", "muacrypt"],
         zip_safe=False,
     )
+
+
+def claimchain_core_deps():
+    return [
+        # from claimchain
+        'attrs',
+        'base58==0.2.5',
+        'cffi',
+        'defaultcontext',
+        'funcsigs',
+        'future',
+        'msgpack-python',
+        'petlib',
+        'pluggy',
+        'pycparser',
+        'PyYAML',
+        'redis',
+        'statistics',
+
+        'six',
+        'profiled',
+
+        # from hippiehug
+        "future",
+        "msgpack-python",
+    ]
 
 if __name__ == '__main__':
     main()
