@@ -16,6 +16,20 @@ references to the chains of the sender and recipients.
 The chains themselves are uploaded to and retrieved from an online storage
 at message delivery and retrieval times.
 
+
+installing
+----------
+
+Use pip to add the muacryptcc plugin::
+
+    $ pip install --user muacryptcc
+
+MuacryptCC will install muacrypt and extend the installation.
+You can confirm it was properly installed by running::
+
+    $ muacrypt cc-status
+
+
 testing
 -------
 
@@ -23,27 +37,24 @@ Please follow the `muacrypt <https://github.com/hpk42/muacrypt>`_
 instructions for testing first.
 
 Once muacrypts tests are passing
-clone the muacryptcc repository into a separate folder.
+Clone the muacryptcc repository into a separate folder::
 
-installing
-----------
+    $ git clone https://github.com/nextleap-project/muacryptcc
 
-Please install `muacrypt <https://github.com/hpk42/muacrypt>`_
-according to the instructions provided first.
-Then use pip to add the muacryptcc plugin::
+Afterwards you can run all tests::
 
-    $ pip install --user muacryptcc
-
-MuacryptCC will extend your muacrypt installation.
-You can confirm it was properly installed by running::
-
-    $ muacrypt cc-status
+    $ tox
 
 installation for development
 ++++++++++++++++++++++++++++
 
-If you plan to work/modify the sources and have
-a git checkout we strongly recommend to create
+If you plan to work/modify the sources
+you will first need a git clone::
+
+    $ git clone git@github.com:nextleap-project/muacryptcc.git
+    $ cd muacryptcc
+
+We strongly recommend to create
 and activate a python virtualenv
 and then once use
 **pip without sudo in edit mode**::

@@ -1,3 +1,9 @@
+0.8.1 - assert Autocrypt key consistency
+----------------------------------------
+
+- fix some packaging issues by inlining "claimchain" and "hippiehug"
+  sub directories for now.
+
 0.8.0 - assert Autocrypt key consistency
 ----------------------------------------
 
