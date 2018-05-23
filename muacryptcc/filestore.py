@@ -8,7 +8,7 @@ from hippiehug.Chain import Block
 
 
 def key2basename(key):
-    return b58encode(key)
+    return b58encode(key).decode("ascii")
 
 
 def basename2key(basename):

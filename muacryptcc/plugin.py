@@ -92,7 +92,7 @@ class CCAccount(object):
         if not os.path.exists(identity_file):
             self.params = LocalParams.generate()
             self.state = State()
-            self.state.identity_info = b"Hi, I'm " + pet2ascii(self.params.dh.pk)
+            self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.dh.pk)
             assert self.head_imprint is None
             self.commit_to_chain()
             assert self.head_imprint
@@ -107,7 +107,7 @@ class CCAccount(object):
     @property
     def head_imprint(self):
         if self._head:
-            return bytes2ascii(self._head)
+            return bytes2ascii(self._head).decode("ascii")
 
     def register_peer(self, addr, root_hash, store_url, chain=None):
         # TODO: check for existing entries
@@ -129,7 +129,7 @@ class CCAccount(object):
 
     def verify_claim(self, chain, addr, keydata, store_url='',
                      root_hash=''):
-        autocrypt_key = bytes2ascii(keydata)
+        autocrypt_key = bytes2ascii(keydata).decode("ascii")
         claim = self.read_claim(addr, chain=chain)
         if claim:
             assert claim['autocrypt_key'] == autocrypt_key
@@ -140,7 +140,7 @@ class CCAccount(object):
 
     def claim_about(self, addr, keydata):
         info = self.read_claim(addr) or {}
-        info['autocrypt_key'] = bytes2ascii(keydata)
+        info['autocrypt_key'] = bytes2ascii(keydata).decode("ascii")
         return (addr, info)
 
     def commit_to_chain(self):
