@@ -92,7 +92,7 @@ class CCAccount(object):
         if not os.path.exists(identity_file):
             self.params = LocalParams.generate()
             self.state = State()
-            self.state.identity_info = "Hi, I'm " + pet2ascii(self.params.dh.pk)
+            self.state.identity_info = b"Hi, I'm " + pet2ascii(self.params.dh.pk)
             assert self.head_imprint is None
             self.commit_to_chain()
             assert self.head_imprint

@@ -33,36 +33,11 @@ def main():
                 "muacryptcc=muacryptcc.plugin"
             ]
         },
-        install_requires=["muacrypt"] + claimchain_core_deps(),
+        install_requires=["muacrypt", "claimchain>=0.3.0"],
         # install_requires=["claimchain", "muacrypt"],
         zip_safe=False,
     )
 
-
-def claimchain_core_deps():
-    return [
-        # from claimchain
-        'attrs',
-        'base58==0.2.5',
-        'cffi',
-        'defaultcontext',
-        'funcsigs',
-        'future',
-        'msgpack-python',
-        'petlib',
-        'pluggy',
-        'pycparser',
-        'PyYAML',
-        'redis',
-        'statistics',
-
-        'six',
-        'profiled',
-
-        # from hippiehug
-        "future",
-        "msgpack-python",
-    ]
 
 if __name__ == '__main__':
     main()
