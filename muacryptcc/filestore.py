@@ -12,6 +12,8 @@ def key2basename(key):
 
 
 def basename2key(basename):
+    if not isinstance(basename, bytes):
+        basename = basename.encode("ascii")
     return b58decode(basename)
 
 
