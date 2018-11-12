@@ -15,4 +15,4 @@ def test_ccstatus(acmd):
 
 
 def test_ccsync(acmd):
-    acmd.run_ok(["cc-sync", "default"])
+    acmd.run_ok(["cc-send", "default", "http://test1:password1@localhost"])

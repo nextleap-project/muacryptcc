@@ -1,3 +1,11 @@
+0.9.0.dev
+----------------------------------------
+
+- rename cc-sync to cc-send and make it accept a URL
+
+- fix str/bytes issues
+
+
 0.8.1 and 0.8.2
 ----------------------------------------
 

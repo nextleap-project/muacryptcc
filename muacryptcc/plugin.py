@@ -10,7 +10,7 @@ from claimchain.crypto.params import LocalParams
 from claimchain.utils import pet2ascii, ascii2pet, bytes2ascii, ascii2bytes
 from muacrypt.mime import parse_email_addr, get_target_emailadr
 from .filestore import FileStore
-from .commands import cc_status, cc_sync
+from .commands import cc_status, cc_send
 
 hookimpl = pluggy.HookimplMarker("muacrypt")
 
@@ -18,7 +18,7 @@ hookimpl = pluggy.HookimplMarker("muacrypt")
 @hookimpl
 def add_subcommands(command_group):
     command_group.add_command(cc_status)
-    command_group.add_command(cc_sync)
+    command_group.add_command(cc_send)
 
 
 @hookimpl
@@ -107,7 +107,10 @@ class CCAccount(object):
     @property
     def head_imprint(self):
         if self._head:
-            return bytes2ascii(self._head).decode("ascii")
+            x = bytes2ascii(self._head)
+            if hasattr(x, "decode"):
+                x = x.decode("ascii")
+            return x
 
     def register_peer(self, addr, root_hash, store_url, chain=None):
         # TODO: check for existing entries
