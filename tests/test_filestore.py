@@ -18,3 +18,13 @@ def test_file_store(tmpdir):
         store.file_set(b'key', 32)
     store2 = FileStore(str(tmpdir))
     assert b'value' == store2.file_get(b'key')
+
+
+def test_file_store_sync(tmpdir):
+    key = b'key has to be longer then a minimum length'
+    source = FileStore(str(tmpdir) + '-source')
+    source[key] = b'value'
+    source.send()
+    target = FileStore(str(tmpdir) + '-target')
+    target.recv(key)
+    assert b'value' == target[key]
