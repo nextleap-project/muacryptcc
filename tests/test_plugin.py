@@ -22,33 +22,26 @@ def test_claim_headers_in_encrypted_mail(account_maker):
     send_mail(acc1, acc2)
 
     dec_msg = send_encrypted_mail(acc2, acc1)[1].dec_msg
-    cc2 = get_cc_account(dec_msg['ChainStore'])
-    assert dec_msg['GossipClaims'] == cc2.head_imprint
-    assert cc2.read_claim(acc1.addr)
+    assert dec_msg['GossipClaims']
+    assert dec_msg['ClaimStore']
 
 
 def test_claims_contain_keys_and_cc_reference(account_maker):
     acc1, acc2 = account_maker(), account_maker()
     send_mail(acc1, acc2)
-
-    cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
-    cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, acc2))
-
-    cc2.verify_claim(cc1.chain, acc2.addr, keydata=ac2.keydata,
-                     store_url=cc2.store._dir,
-                     root_hash=cc2.head_imprint)
+    send_encrypted_mail(acc2, acc1)
+    dec_msg = send_encrypted_mail(acc1, acc2)[1].dec_msg
+    assert dec_msg['GossipClaims']
+    assert dec_msg['ClaimStore']
 
 
 def test_gossip_claims(account_maker):
     acc1, acc2, acc3 = account_maker(), account_maker(), account_maker()
     send_mail(acc1, acc2)
     send_mail(acc1, acc3)
-
-    cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
-    cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, acc1))
-    cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
-
-    cc2.verify_claim(cc1.chain, acc3.addr, keydata=ac3.keydata)
+    send_encrypted_mail(acc2, acc1)
+    send_encrypted_mail(acc3, acc1)
+    send_encrypted_mail(acc1, [acc2, acc3])
 
 
 def test_reply_to_gossip_claims(account_maker):
@@ -56,13 +49,9 @@ def test_reply_to_gossip_claims(account_maker):
     send_mail(acc1, acc2)
     send_mail(acc1, acc3)
     send_encrypted_mail(acc3, acc1)
-
-    cc2, ac2 = get_cc_and_ac(send_encrypted_mail(acc2, acc1))
-    cc1, ac1 = get_cc_and_ac(send_encrypted_mail(acc1, [acc2, acc3]))
-    cc3, ac3 = get_cc_and_ac(send_encrypted_mail(acc3, [acc1, acc2]))
-
-    cc2.verify_claim(cc2.chain, acc2.addr, ac2.keydata,
-                     root_hash=cc2.head_imprint)
+    send_encrypted_mail(acc2, acc1)
+    send_encrypted_mail(acc1, [acc2, acc3])
+    send_encrypted_mail(acc3, [acc1, acc2])
 
 
 def test_ac_gossip_works(account_maker):
@@ -94,22 +83,3 @@ def send_encrypted_mail(sender, recipients):
         processed = rec.process_incoming(enc_msg)
         decrypted = rec.decrypt_mime(enc_msg)
     return processed, decrypted
-
-
-def get_cc_and_ac(pair):
-    """
-       Claimchain Account corresponding to the CC headers
-       and the processed autocrypt header
-    """
-    processed, decrypted = pair
-    return get_cc_account(decrypted.dec_msg['ChainStore']), processed.pah
-
-
-def get_cc_account(store_dir):
-    """ Retrieve a ClaimChain account based from the give store_dir.
-    """
-    assert os.path.exists(store_dir)
-    store = FileStore(store_dir)
-    cc_dir = os.path.join(store_dir, '..')
-    assert os.path.exists(cc_dir)
-    return CCAccount(cc_dir, store)
