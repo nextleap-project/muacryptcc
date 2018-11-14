@@ -63,6 +63,9 @@ class FileStore:
         if not os.path.exists(dir):
             os.makedirs(dir)
 
+    def url(self):
+        return self._url
+
     def __getitem__(self, key):
         bn = key2basename(key)
         try:
