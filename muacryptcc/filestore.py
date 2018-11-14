@@ -65,14 +65,18 @@ class FileStore:
 
     def __getitem__(self, key):
         bn = key2basename(key)
-        bdata = self.file_get(bn)
+        try:
+            bdata = self._file_get(bn)
+        except KeyError:
+            self.recv(key)
+            bdata = self._file_get(bn)
         return value_from_data(bdata)
 
     def __setitem__(self, key, value):
         bn = key2basename(key)
         bdata = msgpack.packb(value, default=default)
         # assert key == value.identity()
-        self.file_set(bn, bdata)
+        self._file_set(bn, bdata)
 
     def send(self):
         for bn, data in self.files():
@@ -82,14 +86,15 @@ class FileStore:
     def recv(self, key):
         bn = key2basename(key)
         r = requests.get(self._url + "/" + bn)
-        assert r.status_code in [200, 202]
+        if not r.status_code in [200, 202]:
+            raise KeyError(key)
         data = r.content
         if not isinstance(data, bytes):
             raise ValueError("data must be of type bytes")
         with open(os.path.join(self._dir, bn), "wb") as f:
             f.write(data)
 
-    def file_set(self, bn, data):
+    def _file_set(self, bn, data):
         if not isinstance(data, bytes):
             raise ValueError("Value must be of type bytes")
         with open(os.path.join(self._dir, bn), "wb") as f:
@@ -106,13 +111,13 @@ class FileStore:
         except OSError:
             keys = []
         for key in keys:
-            yield key, self.file_get(key)
+            yield key, self._file_get(key)
 
-    def file_get(self, bn):
+    def _file_get(self, bn):
         try:
             with open(os.path.join(self._dir, bn), "rb") as f:
                 val = f.read()
                 # print("store-get {!r} -> {!r}".format(bn, val))
             return val
         except IOError:
-            raise KeyError(basename2key(bn))
+            raise KeyError(bn)
