@@ -59,12 +59,9 @@ class FileStore:
         assert dir
         # TODO: remove default and assert url
         self._dir = dir
-        self._url = url
+        self.url = url
         if not os.path.exists(dir):
             os.makedirs(dir)
-
-    def url(self):
-        return self._url
 
     def __getitem__(self, key):
         bn = key2basename(key)
@@ -81,14 +78,21 @@ class FileStore:
         # assert key == value.identity()
         self._file_set(bn, bdata)
 
+    def __len__(self):
+        try:
+            keys = os.listdir(self._dir)
+        except OSError:
+            keys = []
+        return len(keys)
+
     def send(self):
         for bn, data in self.files():
-            r = requests.put(self._url + "/" + bn, data)
+            r = requests.put(self.url + "/" + bn, data)
             assert r.status_code in [200, 202]
 
     def recv(self, key):
         bn = key2basename(key)
-        r = requests.get(self._url + "/" + bn)
+        r = requests.get(self.url + "/" + bn)
         if not r.status_code in [200, 202]:
             raise KeyError(key)
         data = r.content

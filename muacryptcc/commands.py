@@ -25,7 +25,11 @@ def cc_status(ctx, account_name):
     for name in names:
         cc_account = get_cc_account(ctx, name)
         assert cc_account
-        click.echo("found account %r, XXX add info" % name)
+        click.echo("found account %r" % str(name))
+        click.echo("Head Imprint: %r" % cc_account.head_imprint)
+        click.echo("Remote Url: %r" % cc_account.store.url)
+        click.echo("CC data stored in %r" % cc_account.accountdir)
+        click.echo("%r entries." % len(cc_account.store))
 
 
 @mycommand("cc-send")
