@@ -85,7 +85,7 @@ class CCAccount(object):
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
         # TODO: what do we do with dict stores?
-        payload_msg["ClaimStore"] = self.store.url()
+        payload_msg["ClaimStore"] = self.store.url
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
