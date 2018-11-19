@@ -7,6 +7,7 @@ from test_muacrypt.test_account import gen_ac_mail_msg
 from muacrypt.account import Account
 from muacryptcc.plugin import CCAccount
 from muacryptcc.filestore import FileStore
+from claimchain.utils import ascii2bytes
 
 
 def test_no_claim_headers_in_cleartext_mail(account_maker):
@@ -17,13 +18,15 @@ def test_no_claim_headers_in_cleartext_mail(account_maker):
     assert not msg['ClaimStore']
 
 
-def test_claim_headers_in_encrypted_mail(account_maker):
+def test_claim_headers_in_encrypted_mail(account_maker, tmpdir):
     acc1, acc2 = account_maker(), account_maker()
     send_mail(acc1, acc2)
 
     dec_msg = send_encrypted_mail(acc2, acc1)[1].dec_msg
-    assert dec_msg['GossipClaims']
-    assert dec_msg['ClaimStore']
+    root_hash = dec_msg['GossipClaims']
+    url = dec_msg['ClaimStore']
+    store = FileStore(str(tmpdir), url)
+    assert store[ascii2bytes(root_hash)]
 
 
 def test_claims_contain_keys_and_cc_reference(account_maker):
