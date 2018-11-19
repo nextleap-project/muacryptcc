@@ -10,6 +10,12 @@ from muacryptcc.filestore import FileStore
 from claimchain.utils import ascii2bytes
 
 
+def get_cc_account(account):
+    plugin_name = "ccaccount-" + account.name
+    cc_account = account.plugin_manager.get_plugin(name=plugin_name)
+    return cc_account
+
+
 def test_no_claim_headers_in_cleartext_mail(account_maker):
     acc1, acc2 = account_maker(), account_maker()
 
@@ -22,20 +28,29 @@ def test_claim_headers_in_encrypted_mail(account_maker, tmpdir):
     acc1, acc2 = account_maker(), account_maker()
     send_mail(acc1, acc2)
 
-    dec_msg = send_encrypted_mail(acc2, acc1)[1].dec_msg
+    pah, dec_msg = send_encrypted_mail(acc2, acc1)
+    cc2 = get_cc_account(acc2)
     root_hash = dec_msg['GossipClaims']
     url = dec_msg['ClaimStore']
+    assert root_hash == cc2.head_imprint
+    assert cc2.read_claim(acc1.addr)
     store = FileStore(str(tmpdir), url)
     assert store[ascii2bytes(root_hash)]
 
 
-def test_claims_contain_keys_and_cc_reference(account_maker):
+def test_claims_contain_keys_and_cc_reference(account_maker, tmpdir):
     acc1, acc2 = account_maker(), account_maker()
     send_mail(acc1, acc2)
     send_encrypted_mail(acc2, acc1)
-    dec_msg = send_encrypted_mail(acc1, acc2)[1].dec_msg
-    assert dec_msg['GossipClaims']
-    assert dec_msg['ClaimStore']
+    pah, dec_msg = send_encrypted_mail(acc1, acc2)
+    root_hash = dec_msg['GossipClaims']
+    url = dec_msg['ClaimStore']
+    cc2 = get_cc_account(acc2)
+    chain = cc2.get_chain(url, root_hash)
+    claim_about_me = cc2.read_claim(acc2.addr, chain=chain)
+    claim_about_sender = cc2.read_claim(acc1.addr, chain=chain)
+    assert claim_about_me
+    # assert claim_about_sender
 
 
 def test_gossip_claims(account_maker):
@@ -83,6 +98,6 @@ def send_encrypted_mail(sender, recipients):
     msg = gen_ac_mail_msg(sender, recipients, payload="hello", charset="utf8")
     enc_msg = sender.encrypt_mime(msg, [r.addr for r in recipients]).enc_msg
     for rec in recipients:
-        processed = rec.process_incoming(enc_msg)
+        pah = rec.process_incoming(enc_msg)
         decrypted = rec.decrypt_mime(enc_msg)
-    return processed, decrypted
+    return pah, decrypted.dec_msg
