@@ -150,6 +150,8 @@ class CCAccount(object):
     def commit_to_chain(self):
         with self.params.as_default():
             self._head = self.state.commit(self.chain)
+
+    def upload(self):
         if hasattr(self.store, 'send'):
             self.store.send()
 

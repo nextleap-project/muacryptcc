@@ -93,6 +93,7 @@ def send_mail(acc1, acc2):
 
 def send_encrypted_mail(sender, recipients):
     """Send an encrypted mail from sender to recipients
+       upload the new cc blocks,
        Decrypt and process it.
        Returns the result of processing the Autocrypt header
        and the decryption result.
@@ -101,6 +102,7 @@ def send_encrypted_mail(sender, recipients):
         recipients = [recipients]
     msg = gen_ac_mail_msg(sender, recipients, payload="hello", charset="utf8")
     enc_msg = sender.encrypt_mime(msg, [r.addr for r in recipients]).enc_msg
+    get_cc_account(sender).upload()
     for rec in recipients:
         pah = rec.process_incoming(enc_msg).pah
         dec_msg = rec.decrypt_mime(enc_msg).dec_msg
