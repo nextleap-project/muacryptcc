@@ -34,11 +34,9 @@ def cc_status(ctx, account_name):
 
 @mycommand("cc-send")
 @account_option
-@click.argument("url", type=str, required=True)
 @click.pass_context
-def cc_send(ctx, account_name, url):
+def cc_send(ctx, account_name):
     """send blocks to remote place. """
     acc = get_cc_account(ctx, account_name)
     click.echo("found account %r" % account_name)
-    for name, value in acc.store.items():
-        print(name, value)
+    acc.upload()
