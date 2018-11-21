@@ -41,16 +41,20 @@ def test_claim_headers_in_encrypted_mail(account_maker, tmpdir):
 def test_claims_contain_keys_and_cc_reference(account_maker, tmpdir):
     acc1, acc2 = account_maker(), account_maker()
     send_mail(acc1, acc2)
-    send_encrypted_mail(acc2, acc1)
-    pah, dec_msg = send_encrypted_mail(acc1, acc2)
-    root_hash = dec_msg['GossipClaims']
-    url = dec_msg['ClaimStore']
+
+    pah_from_2, msg_from_2 = send_encrypted_mail(acc2, acc1)
     cc2 = get_cc_account(acc2)
-    chain = cc2.get_chain(url, root_hash)
-    claim_about_me = cc2.read_claim(acc2.addr, chain=chain)
-    claim_about_sender = cc2.read_claim(acc1.addr, chain=chain)
-    assert claim_about_me
-    # assert claim_about_sender
+    url2 = msg_from_2['ClaimStore']
+
+    pah_from_1, msg_from_1 = send_encrypted_mail(acc1, acc2)
+    root_hash1 = msg_from_1['GossipClaims']
+    url1 = msg_from_1['ClaimStore']
+
+    chain = cc2.get_chain(url1, root_hash1)
+    assert cc2.read_claim(acc2.addr, chain=chain)
+    cc2.verify_claim(chain, acc2.addr, keydata=pah_from_2.keydata,
+                     store_url=url2,
+                     root_hash=cc2.head_imprint)
 
 
 def test_gossip_claims(account_maker):
@@ -98,6 +102,6 @@ def send_encrypted_mail(sender, recipients):
     msg = gen_ac_mail_msg(sender, recipients, payload="hello", charset="utf8")
     enc_msg = sender.encrypt_mime(msg, [r.addr for r in recipients]).enc_msg
     for rec in recipients:
-        pah = rec.process_incoming(enc_msg)
-        decrypted = rec.decrypt_mime(enc_msg)
-    return pah, decrypted.dec_msg
+        pah = rec.process_incoming(enc_msg).pah
+        dec_msg = rec.decrypt_mime(enc_msg).dec_msg
+    return pah, dec_msg
