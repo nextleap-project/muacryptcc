@@ -29,7 +29,7 @@ def instantiate_account(plugin_manager, basedir):
     # avoid double registration
     p = plugin_manager.get_plugin(name=plugin_name)
     if p is not None:
-        plugin_manager.unregister(name=plugin_name)
+        return p
 
     cc_dir = os.path.join(basedir, "muacryptcc")
     store_dir = os.path.join(cc_dir, "store")
