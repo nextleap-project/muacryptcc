@@ -29,7 +29,7 @@ def instantiate_account(plugin_manager, basedir):
     # avoid double registration
     p = plugin_manager.get_plugin(name=plugin_name)
     if p is not None:
-        plugin_manager.unregister(name=plugin_name)
+        return p
 
     cc_dir = os.path.join(basedir, "muacryptcc")
     store_dir = os.path.join(cc_dir, "store")
@@ -53,7 +53,7 @@ class CCAccount(object):
     def process_incoming_gossip(self, addr2pagh, account_key, dec_msg):
         sender_addr = parse_email_addr(dec_msg["From"])
         root_hash = dec_msg["GossipClaims"]
-        store_url = dec_msg["ChainStore"]
+        store_url = dec_msg["ClaimStore"]
         if not root_hash or not store_url:
             # this peer has no CC support
             return
@@ -85,7 +85,7 @@ class CCAccount(object):
         self.commit_to_chain()
         payload_msg["GossipClaims"] = self.head_imprint
         # TODO: what do we do with dict stores?
-        payload_msg["ChainStore"] = self.store._dir
+        payload_msg["ClaimStore"] = self.store.url
 
     def init_crypto_identity(self):
         identity_file = os.path.join(self.accountdir, 'identity.json')
@@ -127,7 +127,8 @@ class CCAccount(object):
         )))
 
     def get_chain(self, store_url, root_hash):
-        store = FileStore(store_url)
+        cache_dir = os.path.join(self.accountdir, 'cache')
+        store = FileStore(cache_dir, store_url)
         return Chain(store, root_hash=ascii2bytes(root_hash))
 
     def verify_claim(self, chain, addr, keydata, store_url='',
@@ -149,6 +150,10 @@ class CCAccount(object):
     def commit_to_chain(self):
         with self.params.as_default():
             self._head = self.state.commit(self.chain)
+
+    def upload(self):
+        if hasattr(self.store, 'send'):
+            self.store.send()
 
     def read_claim(self, claimkey, chain=None):
         if chain is None:

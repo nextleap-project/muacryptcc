@@ -5,7 +5,9 @@ include LICENSE
 include *.rst
 include tox.ini
 exclude .gitmodules
+exclude .travis
 recursive-include tests *.py
 recursive-include claimchain *.py
+recursive-exclude .travis *
 prune cc
 prune rousseau

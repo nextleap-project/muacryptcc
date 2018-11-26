@@ -1,4 +1,5 @@
 import os
+import requests
 
 from base58 import b58encode, b58decode
 import msgpack
@@ -15,6 +16,14 @@ def basename2key(basename):
     if not isinstance(basename, bytes):
         basename = basename.encode("ascii")
     return b58decode(basename)
+
+
+def value_from_data(bdata):
+    branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
+    if isinstance(branch, bytes):
+        return Blob(branch)
+    # assert key == branch.identity()
+    return branch
 
 
 def default(obj):
@@ -46,48 +55,76 @@ def ext_hook(code, data):
 
 
 class FileStore:
-    def __init__(self, dir):
+    def __init__(self, dir, url="http://test1:password1@localhost:5000"):
         assert dir
+        # TODO: remove default and assert url
         self._dir = dir
+        self.url = url
         if not os.path.exists(dir):
             os.makedirs(dir)
 
     def __getitem__(self, key):
-        bdata = self.file_get(key)
-        branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
-        if isinstance(branch, bytes):
-            return Blob(branch)
-        # assert key == branch.identity()
-        return branch
+        bn = key2basename(key)
+        try:
+            bdata = self._file_get(bn)
+        except KeyError:
+            self.recv(key)
+            bdata = self._file_get(bn)
+        return value_from_data(bdata)
 
     def __setitem__(self, key, value):
+        bn = key2basename(key)
         bdata = msgpack.packb(value, default=default)
         # assert key == value.identity()
-        self.file_set(key, bdata)
+        self._file_set(bn, bdata)
 
-    def file_set(self, key, value):
-        if not isinstance(value, bytes):
-            raise ValueError("Value must be of type bytes")
+    def __len__(self):
+        try:
+            keys = os.listdir(self._dir)
+        except OSError:
+            return
+        return len(keys)
+
+    def send(self):
+        for bn, data in self.files():
+            r = requests.put(self.url + "/" + bn, data)
+            assert r.status_code in [200, 202]
+
+    def recv(self, key):
         bn = key2basename(key)
+        r = requests.get(self.url + "/" + bn)
+        if r.status_code not in [200, 202]:
+            raise KeyError(key)
+        data = r.content
+        if not isinstance(data, bytes):
+            raise ValueError("data must be of type bytes")
         with open(os.path.join(self._dir, bn), "wb") as f:
-            f.write(value)
+            f.write(data)
+
+    def _file_set(self, bn, data):
+        if not isinstance(data, bytes):
+            raise ValueError("Value must be of type bytes")
+        with open(os.path.join(self._dir, bn), "wb") as f:
+            f.write(data)
             # print("store-set {!r}={!r}".format(bn, value))
 
-    def file_get(self, key):
-        bn = key2basename(key)
+    def items(self):
+        for raw_key, raw_data in self.files():
+            yield basename2key(raw_key), value_from_data(raw_data)
+
+    def files(self):
+        try:
+            keys = os.listdir(self._dir)
+        except OSError:
+            keys = []
+        for key in keys:
+            yield key, self._file_get(key)
+
+    def _file_get(self, bn):
         try:
             with open(os.path.join(self._dir, bn), "rb") as f:
                 val = f.read()
                 # print("store-get {!r} -> {!r}".format(bn, val))
             return val
         except IOError:
-            raise KeyError(key)
-
-    def items(self):
-        try:
-            encoded_keys = os.listdir(self._dir)
-        except OSError:
-            encoded_keys = []
-        for raw_key in encoded_keys:
-            key = basename2key(raw_key)
-            yield key, self[key]
+            raise KeyError(bn)

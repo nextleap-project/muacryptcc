@@ -25,16 +25,18 @@ def cc_status(ctx, account_name):
     for name in names:
         cc_account = get_cc_account(ctx, name)
         assert cc_account
-        click.echo("found account %r, XXX add info" % name)
+        click.echo("found account %r" % str(name))
+        click.echo("Head Imprint: %r" % cc_account.head_imprint)
+        click.echo("Remote Url: %r" % cc_account.store.url)
+        click.echo("CC data stored in %r" % cc_account.accountdir)
+        click.echo("%r entries." % len(cc_account.store))
 
 
 @mycommand("cc-send")
 @account_option
-@click.argument("url", type=str, required=True)
 @click.pass_context
-def cc_send(ctx, account_name, url):
+def cc_send(ctx, account_name):
     """send blocks to remote place. """
     acc = get_cc_account(ctx, account_name)
     click.echo("found account %r" % account_name)
-    for name, value in acc.store.items():
-        print(name, value)
+    acc.upload()

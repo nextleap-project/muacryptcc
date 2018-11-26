@@ -11,6 +11,7 @@ install:
   - PATH="$HOME/bin:$PATH"
   - export LD_LIBRARY_PATH="$HOME/lib:${LD_LIBRARY_PATH}"
   - pip install -U tox
+  - pip install -U cchttpserver
   - gpg2 --version
 #  - util/custom-gpg.sh
 
@@ -26,6 +27,9 @@ env:
     - TESTENV=lint
     - TESTENV=py27
 #    - TESTENV=py35
+
+before_script:
+  - CCHTTPSERVER_CONFIG=.travis/cchttpserver.config.py python -m cchttpserver &
 
 script:
   - gpg2 --version

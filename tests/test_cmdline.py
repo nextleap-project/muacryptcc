@@ -11,8 +11,14 @@ def acmd(mycmd):
 
 def test_ccstatus(acmd):
     acmd.run_ok(["cc-status"])
-    acmd.run_ok(["cc-status", "-a", "default"])
+    acmd.run_ok(["cc-status", "-a", "default"], """
+    found account 'default'
+    Head Imprint: *
+    Remote Url: 'http://*
+    CC data stored in *account/default/muacryptcc*
+    1 entries.
+    """)
 
 
 def test_ccsync(acmd):
-    acmd.run_ok(["cc-send", "http://test1:password1@localhost"])
+    acmd.run_ok(["cc-send"])
