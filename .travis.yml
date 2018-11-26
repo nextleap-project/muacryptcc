@@ -29,7 +29,7 @@ env:
 #    - TESTENV=py35
 
 before_script:
-  - [TESTENV != lint] && CCHTTPSERVER_CONFIG=.travis/cchttpserver.config.py python -m cchttpserver &
+  - CCHTTPSERVER_CONFIG=.travis/cchttpserver.config.py python -m cchttpserver &
 
 script:
   - gpg2 --version
