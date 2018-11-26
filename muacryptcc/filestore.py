@@ -82,7 +82,7 @@ class FileStore:
         try:
             keys = os.listdir(self._dir)
         except OSError:
-            keys = []
+            return
         return len(keys)
 
     def send(self):
