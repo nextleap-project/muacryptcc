@@ -1,4 +1,5 @@
 from muacrypt.cmdline_utils import mycommand, click
+from muacrypt.cmdline import account_option
 
 
 def get_cc_account(ctx, name):
@@ -12,7 +13,7 @@ def get_cc_account(ctx, name):
 
 
 @mycommand("cc-status")
-@click.argument("account_name", type=str, required=False, default=None)
+@account_option
 @click.pass_context
 def cc_status(ctx, account_name):
     """print claimchain status for an account. """
@@ -28,7 +29,7 @@ def cc_status(ctx, account_name):
 
 
 @mycommand("cc-send")
-@click.argument("account_name", type=str, required=True)
+@account_option
 @click.argument("url", type=str, required=True)
 @click.pass_context
 def cc_send(ctx, account_name, url):
