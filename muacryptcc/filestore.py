@@ -93,7 +93,7 @@ class FileStore:
     def recv(self, key):
         bn = key2basename(key)
         r = requests.get(self.url + "/" + bn)
-        if not r.status_code in [200, 202]:
+        if r.status_code not in [200, 202]:
             raise KeyError(key)
         data = r.content
         if not isinstance(data, bytes):

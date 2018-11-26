@@ -2,10 +2,8 @@
 # vim:ts=4:sw=4:expandtab
 
 from __future__ import unicode_literals
-import os
 from test_muacrypt.test_account import gen_ac_mail_msg
 from muacrypt.account import Account
-from muacryptcc.plugin import CCAccount
 from muacryptcc.filestore import FileStore
 from claimchain.utils import ascii2bytes
 
