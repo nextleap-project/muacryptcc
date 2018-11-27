@@ -1,5 +1,36 @@
-0.9.0.dev
-----------------------------------------
+0.9.0 - use online storage to exchange claims
+---------------------------------------------
+
+Support exchanging claims via cchttpserver.
+
+This release introduces the cc-send command.
+It will upload the local claim chain to a remote cchttpserver.
+
+FileStore now takes the url of a remote cchttpserver as an argument.
+When claims are not available locally it will look them up remotely.
+This way it acts as a transparent cache when reading peers claim chains.
+
+- use cc_account.upload() in the cc-send command
+
+- explicitly call cc.upload() to upload new blocks
+
+- reuse the existing plugin, when initialization happens twice
+  unregistering the old and registering a new plugin might
+  cause problems if the old CC account is still used somewhere.
+
+- cc-status: print some more details
+
+- filestore: recv missing data from remote
+  This way we can easily integrate it with claimchain.
+  For other peoples chains the store basically acts as a local cache.
+
+- enable FileStore to sync to a remote cchttpserver
+
+- use devpi-index for getting latest "muacrypt"
+
+- use muacrypt's command line structure
+  where accounts are always specified via "-a ACCOUNTNAME"
+  and default to "default"
 
 - rename cc-sync to cc-send and make it accept a URL
 
